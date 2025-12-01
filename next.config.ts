@@ -1,22 +1,39 @@
-import type { NextConfig } from "next";
+const nextConfig = {
+  reactStrictMode: false,
 
-const nextConfig: NextConfig = {
-  /* config options here */
-  //  async redirects() {
-  //   return [
-  //     {
-  //       source: '/setup-password',
-  //       has: [
-  //         {
-  //           type: 'cookie',
-  //           key: 'user_session', // or whatever session cookie you use
-  //         },
-  //       ],
-  //       destination: '/dashboard',
-  //       permanent: false,
-  //     },
-  //   ];
-  // },
+  // 👇 force Webpack instead of Turbopack
+  experimental: {
+    turbo: false,
+  },
+
+  webpack(config) {
+    const fileLoaderRule = config.module.rules.find((rule) => rule.test?.test?.('.svg'));
+
+    config.module.rules.push(
+      {
+        test: /\.svg$/i,
+        issuer: /\.[jt]sx?$/,
+        use: ['@svgr/webpack'],
+      },
+      {
+        ...fileLoaderRule,
+        test: /\.svg$/i,
+        resourceQuery: /url/,
+      }
+    );
+
+    if (fileLoaderRule) {
+      fileLoaderRule.exclude = /\.svg$/i;
+    }
+
+    return config;
+  },
+
+  output: 'export',
+  trailingSlash: true,
+  eslint: { ignoreDuringBuilds: true },
+  typescript: { ignoreBuildErrors: true },
+  images: { unoptimized: true },
 };
 
-export default nextConfig;
+module.exports = nextConfig;

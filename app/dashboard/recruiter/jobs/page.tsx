@@ -232,9 +232,11 @@ export default function JobsPage() {
                 <h2 className="text-2xl font-bold text-gray-900 dark:text-white">My Jobs</h2>
                 <p className="text-gray-600 dark:text-gray-400 mt-1">Manage your posted job listings.</p>
               </div>
+              <a href="/dashboard/recruiter/jobs/post-a-job">
               <button className="bg-[#00639C] text-white px-6 py-2 rounded-full hover:bg-[#005A8C] text-sm font-medium">
                 Post New Job
               </button>
+              </a>
             </div>
 
             {/* Jobs List */}
