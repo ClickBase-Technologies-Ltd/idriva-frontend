@@ -23,7 +23,9 @@ import {
   faFileAlt,
   faBars,
   faTimes,
-  faWarehouse
+  faWarehouse,
+  faPlus,
+  faChartLine
 } from '@fortawesome/free-solid-svg-icons';
 import api from '@/lib/api';
 
@@ -37,6 +39,13 @@ interface User {
   profile_picture?: string;
 }
 
+interface SuggestedUser {
+  id: string;
+  full_name: string;
+  profile_picture?: string | null;
+  is_following?: boolean;
+}
+
 export default function Sidebar() {
   const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();
@@ -44,8 +53,8 @@ export default function Sidebar() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const router = useRouter();
-    const [isAuthenticated, setIsAuthenticated] = useState(null);
-    const [name, setName] = useState('');
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+  const [name, setName] = useState('');
   const [role, setRole] = useState('');
 
   useEffect(() => {
@@ -84,14 +93,17 @@ export default function Sidebar() {
           const userData = await response.json();
           console.log('API User data:', userData);
           
+          // API may wrap user inside 'user' key depending on backend
+          const payload = userData.user || userData;
+          
           setUser({
-            id: userData.id || '1',
-            firstName: userData.firstName || 'API First',
-            lastName: userData.lastName || 'API Last',
-            role: userData.role || 'driver',
-            email: userData.email,
-            phoneNumber: userData.phoneNumber,
-            profile_picture: userData.profile_picture
+            id: String(payload.id || payload.user_id || '1'),
+            firstName: payload.firstName || payload.first_name || 'API First',
+            lastName: payload.lastName || payload.last_name || 'API Last',
+            role: payload.role || payload.user_role || 'Driver',
+            email: payload.email,
+            phoneNumber: payload.phoneNumber || payload.phone || undefined,
+            profile_picture: payload.profile_picture || payload.profile?.profile_picture || undefined
           });
         } else {
           console.error('API failed with status:', response.status);
@@ -122,7 +134,7 @@ export default function Sidebar() {
     fetchUserData();
   }, []);
 
-   const refreshToken = useCallback(async () => {
+  const refreshToken = useCallback(async () => {
     try {
       await api.post('/refresh', {}, { withCredentials: true });
       return true;
@@ -132,13 +144,15 @@ export default function Sidebar() {
     }
   }, []);
 
-    useEffect(() => {
+  useEffect(() => {
     const checkAuth = async () => {
       try {
         const response = await api.get(`${process.env.NEXT_PUBLIC_API_URL}/user`, { withCredentials: true });
         setIsAuthenticated(true);
-        setRole(response.data.role || '');
-        setName(`${response.data.firstName || ''} ${response.data.lastName || ''}`.trim());
+        // normalize backend response
+        const data = response.data?.user || response.data || {};
+        setRole(data.role || data.user_role || '');
+        setName(`${data.firstName || data.first_name || ''} ${data.lastName || data.last_name || ''}`.trim());
       } catch (error) {
         console.error('Auth check failed:', error);
         setIsAuthenticated(false);
@@ -147,7 +161,7 @@ export default function Sidebar() {
     checkAuth();
   }, []);
 
-    useEffect(() => {
+  useEffect(() => {
     const interceptor = api.interceptors.response.use(
       (response) => response,
       async (error) => {
@@ -167,7 +181,7 @@ export default function Sidebar() {
     };
   }, [refreshToken]);
 
-    // Handle redirect after all hooks are called
+  // Handle redirect after all hooks are called
   useEffect(() => {
     if (isAuthenticated === false) {
       router.push('/');
@@ -181,6 +195,7 @@ export default function Sidebar() {
       { href: '/profile', icon: faUser, label: 'Profile' },
       { href: '/followers?type=following', icon: faUsers, label: 'Following' },
       { href: '/followers?type=followers', icon: faUserCheck, label: 'Followers' },
+      { href: '/dashboard/learning', icon: faBook, label: 'Learning' },
       { href: '/certifications', icon: faAward, label: 'Certifications' },
       { href: '/jobs', icon: faBriefcase, label: 'Job Board' },
       { href: '#', icon: faComments, label: 'Messages', isMessage: true },
@@ -202,8 +217,13 @@ export default function Sidebar() {
     Instructor: [
       { href: '/instructor/dashboard', icon: faTachometerAlt, label: 'Dashboard' },
       { href: '/instructor/my-courses', icon: faBook, label: 'My Courses' },
+      { href: '/instructor/courses/create', icon: faPlus, label: 'Create Course' },
+      { href: '/instructor/modules/create', icon: faFileAlt, label: 'Create Module' },
+  // { href: '/instructor/lessons/create', icon: faBook, label: 'Create Lesson' },
+      { href: '/instructor/enrollments', icon: faUserCheck, label: 'Enrollments' },
+      { href: '/instructor/students', icon: faUsers, label: 'Students' },
+      { href: '/instructor/analytics', icon: faChartLine, label: 'Analytics' },
       { href: '/instructor/schedule', icon: faCalendarAlt, label: 'Schedule' },
-      { href: '#', icon: faComments, label: 'Messages', isMessage: true },
       { href: '/instructor/settings', icon: faCog, label: 'Settings' },
     ],
   };
@@ -227,7 +247,7 @@ export default function Sidebar() {
     role: 'driver'
   };
 
-   const handleFollow = async (userId: string) => {
+  const handleFollow = async (userId: string) => {
     try {
       const response = await fetch('/api/follow', {
         method: 'POST',
@@ -245,7 +265,7 @@ export default function Sidebar() {
     }
   };
 
-   // Mock suggested users - you can replace this with actual API call
+  // Mock suggested users - you can replace this with actual API call
   const mockSuggestedUsers: SuggestedUser[] = [
     {
       id: '2',
@@ -261,8 +281,12 @@ export default function Sidebar() {
     },
   ];
 
+  // Normalize role -> find matching key in roleBasedNavItems (case-insensitive), default to Driver
   const fullName = `${currentUser.firstName} ${currentUser.lastName}`.trim();
-  const navItems = roleBasedNavItems[currentUser.role as keyof typeof roleBasedNavItems] || roleBasedNavItems.driver;
+  const roleKey = (Object.keys(roleBasedNavItems) as string[]).find(
+    (k) => k.toLowerCase() === (currentUser.role || '').toLowerCase()
+  ) || 'Driver';
+  const navItems = roleBasedNavItems[roleKey as keyof typeof roleBasedNavItems];
 
   console.log('Rendering sidebar with user:', {
     fullName,
@@ -383,6 +407,36 @@ export default function Sidebar() {
               </Link>
             )
           ))}
+
+          {/* Instructor Tools quick actions */}
+          {roleKey === 'Instructor' && (
+            <div className="mt-4 border-t pt-4">
+              <h4 className="text-xs uppercase text-gray-500 mb-2">Instructor Tools</h4>
+              <div className="space-y-2">
+                <Link
+                  href="/instructor/courses/create"
+                  className="block px-3 py-2 rounded-md hover:bg-green-600 hover:text-white transition flex items-center text-sm bg-green-50 dark:bg-gray-800"
+                >
+                  <FontAwesomeIcon icon={faPlus} className="mr-2 w-4 h-4" />
+                  Create Course
+                </Link>
+                <Link
+                  href="/instructor/my-courses"
+                  className="block px-3 py-2 rounded-md hover:bg-blue-600 hover:text-white transition flex items-center text-sm"
+                >
+                  <FontAwesomeIcon icon={faBook} className="mr-2 w-4 h-4" />
+                  Manage Courses
+                </Link>
+                <Link
+                  href="/instructor/analytics"
+                  className="block px-3 py-2 rounded-md hover:bg-indigo-600 hover:text-white transition flex items-center text-sm"
+                >
+                  <FontAwesomeIcon icon={faChartLine} className="mr-2 w-4 h-4" />
+                  Analytics
+                </Link>
+              </div>
+            </div>
+          )}
           
           {/* Logout */}
           {/* <Link
@@ -392,7 +446,8 @@ export default function Sidebar() {
             <FontAwesomeIcon icon={faSignOutAlt} className="mr-2 w-4 h-4" />
             Logout
           </Link> */}
-         {/* People You May Know - Instructor version */}
+
+         {/* People You May Know */}
         {(currentUser.role === 'Driver' || currentUser.role === 'Recruiter' ) && mockSuggestedUsers.length > 0 && (
           <div className="mt-6 px-6 pb-6">
             <div className="bg-white dark:bg-gray-800">
