@@ -23,7 +23,9 @@ import {
   faFileAlt,
   faBars,
   faTimes,
-  faWarehouse
+  faWarehouse,
+  faChartLine,
+  faPlus
 } from '@fortawesome/free-solid-svg-icons';
 import api from '@/lib/api';
 
@@ -199,11 +201,16 @@ export default function Sidebar() {
       { href: '/notifications', icon: faBell, label: 'Notifications' },
       { href: '/settings', icon: faCog, label: 'Settings' },
     ],
-    Instructor: [
+  Instructor: [
       { href: '/instructor/dashboard', icon: faTachometerAlt, label: 'Dashboard' },
       { href: '/instructor/my-courses', icon: faBook, label: 'My Courses' },
+      { href: '/instructor/courses/create', icon: faPlus, label: 'Create Course' },
+      { href: '/instructor/modules/create', icon: faFileAlt, label: 'Create Module' },
+  // { href: '/instructor/lessons/create', icon: faBook, label: 'Create Lesson' },
+      { href: '/instructor/enrollments', icon: faUserCheck, label: 'Enrollments' },
+      { href: '/instructor/students', icon: faUsers, label: 'Students' },
+      { href: '/instructor/analytics', icon: faChartLine, label: 'Analytics' },
       { href: '/instructor/schedule', icon: faCalendarAlt, label: 'Schedule' },
-      { href: '#', icon: faComments, label: 'Messages', isMessage: true },
       { href: '/instructor/settings', icon: faCog, label: 'Settings' },
     ],
   };

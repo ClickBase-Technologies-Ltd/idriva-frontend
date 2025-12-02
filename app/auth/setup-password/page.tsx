@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { LockClosedIcon, EyeIcon, EyeSlashIcon, CheckCircleIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
 import Header from '@/components/Header';
@@ -14,17 +15,16 @@ export default function SetupPasswordPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [userEmail, setUserEmail] = useState('');
-  
+
   const [formData, setFormData] = useState({
     password: '',
     confirmPassword: '',
   });
 
-  // Get email from localStorage on component mount
   useEffect(() => {
     const email = localStorage.getItem('pending_user_email');
     if (!email) {
-      router.push('/signup');
+      router.push('/auth/signup');
       return;
     }
     setUserEmail(email);
@@ -36,7 +36,6 @@ export default function SetupPasswordPage() {
     setError('');
     setSuccess('');
 
-    // Validate passwords
     if (formData.password.length < 6) {
       setError('Password must be at least 6 characters long');
       setIsLoading(false);
@@ -50,54 +49,34 @@ export default function SetupPasswordPage() {
     }
 
     try {
-      // Step 1: Update password
-      const updateResponse = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/setup-password`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            email: userEmail,
-            password: formData.password,
-            password_confirmation: formData.confirmPassword, 
-          }),
-        }
-      );
+      const updateResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/setup-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({
+          email: userEmail,
+          password: formData.password,
+          password_confirmation: formData.confirmPassword,
+        }),
+      });
 
-      const updateData = await updateResponse.json();
-      console.log('Password setup response:', updateData);
-
+      const updateData = await updateResponse.json().catch(() => ({}));
       if (!updateResponse.ok || updateData.status !== 'success') {
-        setError(updateData.message || 'Failed to set password');
+        setError(updateData.message || `Failed to set password (${updateResponse.status})`);
         setIsLoading(false);
         return;
       }
 
-      // Step 2: Auto-login after password setup
       setSuccess('Password set successfully! Logging you in...');
-      
-      const loginResponse = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/signin`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          credentials: 'include',
-          body: JSON.stringify({
-            username: userEmail,
-            password: formData.password,
-          }),
-        }
-      );
 
-      const loginData = await loginResponse.json();
-      console.log('Auto-login response:', loginData);
+      const loginResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/signin`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ username: userEmail, password: formData.password }),
+      });
 
+      const loginData = await loginResponse.json().catch(() => ({}));
       if (loginResponse.ok) {
-        // Store user data in localStorage
         const userData = {
           firstName: loginData.firstName,
           lastName: loginData.lastName,
@@ -105,30 +84,19 @@ export default function SetupPasswordPage() {
           phoneNumber: loginData.phoneNumber,
           role: loginData.role,
           access_token: loginData.access_token,
-          
         };
-
         localStorage.setItem('user', JSON.stringify(userData));
-        
-        // Clear pending user email
         localStorage.removeItem('pending_user_email');
-        
+
         setSuccess('Login successful! Redirecting to dashboard...');
-        
-        // Redirect to dashboard
-        setTimeout(() => {
-          router.push('/dashboard');
-        }, 1500);
+        setTimeout(() => router.push('/dashboard'), 1200);
       } else {
         setError(loginData.message || 'Auto-login failed. Please login manually.');
-        // Still clear the pending email and redirect to login
         localStorage.removeItem('pending_user_email');
-        setTimeout(() => {
-          router.push('/login');
-        }, 3000);
+        setTimeout(() => router.push('/auth/login'), 2500);
       }
-    } catch (error) {
-      console.error('Password setup failed:', error);
+    } catch (err) {
+      console.error('Password setup failed:', err);
       setError('Network error. Please try again.');
     } finally {
       setIsLoading(false);
@@ -136,10 +104,7 @@ export default function SetupPasswordPage() {
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
+    setFormData({ ...formData, [e.target.name]: e.target.value });
     if (error) setError('');
   };
 
@@ -150,19 +115,9 @@ export default function SetupPasswordPage() {
     return 'strong';
   };
 
-  const getPasswordStrengthColor = () => {
-    const strength = passwordStrength();
-    switch (strength) {
-      case 'weak': return 'bg-red-500';
-      case 'medium': return 'bg-yellow-500';
-      case 'strong': return 'bg-green-500';
-      default: return 'bg-gray-300';
-    }
-  };
-
   if (!userEmail) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex flex-col">
+      <div className="min-h-screen bg-gray-50 flex flex-col">
         <Header />
         <main className="flex-1 flex items-center justify-center">
           <div className="text-center">
@@ -176,87 +131,84 @@ export default function SetupPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex flex-col">
+    <div className="min-h-screen bg-gray-50 flex flex-col">
       <Header />
-      
-      <main className="flex-1 flex items-center justify-center py-8 pt-20 pb-30">
-        <div className="w-full max-w-md">
-          <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
-            {/* Header Section */}
-            <div className="bg-gradient-to-r from-blue-600 to-indigo-700 p-8 text-white">
-              <div className="flex items-center gap-4 mb-2">
-                <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
-                  <LockClosedIcon className="w-6 h-6" />
-                </div>
-                <div>
-                  <h1 className="text-2xl sm:text-3xl font-bold">
-                    Set Your Password
-                  </h1>
-                  <p className="text-blue-100 text-sm mt-1">
-                    Create a secure password for your account
-                  </p>
-                </div>
-              </div>
+
+      <main className="flex-1 mt-28 lg:mt-32">
+        <div className="max-w-7xl mx-auto px-6 lg:px-12 grid grid-cols-1 lg:grid-cols-2 gap-16">
+          {/* LEFT: marketing */}
+          <div className="flex flex-col justify-center">
+            <h1 className="text-5xl lg:text-6xl font-semibold text-[#0A66C2] leading-tight mb-6">
+              Welcome to iDriva
+            </h1>
+
+            <p className="text-gray-700 text-lg leading-relaxed mb-10">
+              Manage your professional driver profile, track your training, connect with communities, and unlock new opportunities.
+            </p>
+
+            <div className="opacity-40 mb-10">
+              <Image src="/logo.png" alt="iDriva Logo" width={180} height={180} className="object-contain" />
             </div>
 
-            {/* Form Section */}
-            <div className="p-8">
+            <div className="space-y-5">
+              <div className="flex items-center gap-4 bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+                <span className="h-10 w-10 bg-blue-100 rounded-full" />
+                <p className="font-medium text-gray-700">Track your learning and training progress easily.</p>
+              </div>
+
+              <div className="flex items-center gap-4 bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+                <span className="h-10 w-10 bg-indigo-100 rounded-full" />
+                <p className="font-medium text-gray-700">Stay connected to your community and career updates.</p>
+              </div>
+
+              <div className="flex items-center gap-4 bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+                <span className="h-10 w-10 bg-green-100 rounded-full" />
+                <p className="font-medium text-gray-700">Access opportunities tailored for your driver journey.</p>
+              </div>
+            </div>
+          </div>
+
+          {/* RIGHT: setup password card (login look & feel) */}
+          <div>
+            <div className="bg-white border border-gray-300 rounded-lg shadow-md p-10">
+              <h2 className="text-3xl font-semibold text-gray-900 mb-2">Complete account setup</h2>
+              <p className="text-gray-600 mb-6">Create a password for <strong>{userEmail}</strong></p>
+
               {success && (
-                <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 px-4 py-3 rounded-xl text-sm mb-6 flex items-center gap-2">
+                <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 p-3 rounded-md mb-5 flex items-center gap-2">
                   <CheckCircleIcon className="w-5 h-5" />
                   {success}
                 </div>
               )}
 
               {error && (
-                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm mb-6 flex items-center gap-2">
-                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                  </svg>
+                <div className="bg-red-50 border border-red-200 text-red-700 p-3 rounded-md mb-5">
                   {error}
                 </div>
               )}
 
-              <p className="text-sm text-gray-600 mb-6">
-                Welcome! Please create a secure password for <strong>{userEmail}</strong>
-              </p>
-
-              <form onSubmit={handleSubmit} className="space-y-4">
-                {/* Password Field */}
-                <div className="space-y-2">
-                  <label htmlFor="password" className="block text-sm font-semibold text-gray-700 flex items-center gap-2">
-                    <LockClosedIcon className="w-4 h-4 text-blue-600" />
-                    Password *
-                  </label>
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
                   <div className="relative">
                     <input
-                      type={showPassword ? "text" : "password"}
+                      type={showPassword ? 'text' : 'password'}
                       name="password"
-                      id="password"
+                      placeholder="Create a secure password (6+ characters)"
                       value={formData.password}
                       onChange={handleChange}
-                      minLength={6}
-                      className="w-full border border-gray-300 rounded-xl shadow-sm px-4 py-3 pr-11 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 disabled:bg-gray-50 text-gray-900"
                       required
                       disabled={isLoading}
-                      placeholder="Create a secure password (6+ characters)"
+                      className="w-full border border-gray-400 rounded-md px-3 py-3 text-base focus:border-[#0A66C2] focus:ring-[#0A66C2]"
                     />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute inset-y-0 right-0 px-3 flex items-center justify-center rounded-r-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      {showPassword ? (
-                        <EyeSlashIcon className="w-4 h-4 text-gray-500" />
-                      ) : (
-                        <EyeIcon className="w-4 h-4 text-gray-500" />
-                      )}
+                    <button type="button" className="absolute right-3 top-3 text-gray-500" onClick={() => setShowPassword(!showPassword)}>
+                      {showPassword ? <EyeSlashIcon className="w-5 h-5" /> : <EyeIcon className="w-5 h-5" />}
                     </button>
                   </div>
-                  
-                  {/* Password Strength Indicator */}
+
+                  {/* strength */}
                   {formData.password && (
-                    <div className="mt-2">
+                    <div className="mt-2 text-sm">
                       <div className="flex items-center justify-between text-xs mb-1">
                         <span>Password strength:</span>
                         <span className={`font-medium ${
@@ -268,84 +220,73 @@ export default function SetupPasswordPage() {
                         </span>
                       </div>
                       <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div 
-                          className={`h-2 rounded-full transition-all duration-300 ${
-                            passwordStrength() === 'weak' ? 'w-1/3 bg-red-500' :
-                            passwordStrength() === 'medium' ? 'w-2/3 bg-yellow-500' :
-                            passwordStrength() === 'strong' ? 'w-full bg-green-500' : 'w-0'
-                          }`}
-                        ></div>
+                        <div className={`h-2 rounded-full transition-all duration-300 ${
+                          passwordStrength() === 'weak' ? 'w-1/3 bg-red-500' :
+                          passwordStrength() === 'medium' ? 'w-2/3 bg-yellow-500' :
+                          passwordStrength() === 'strong' ? 'w-full bg-green-500' : 'w-0'
+                        }`} />
                       </div>
                     </div>
                   )}
                 </div>
 
-                {/* Confirm Password Field */}
-                <div className="space-y-2">
-                  <label htmlFor="confirmPassword" className="block text-sm font-semibold text-gray-700 flex items-center gap-2">
-                    <LockClosedIcon className="w-4 h-4 text-blue-600" />
-                    Confirm Password *
-                  </label>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Confirm password</label>
                   <div className="relative">
                     <input
-                      type={showConfirmPassword ? "text" : "password"}
+                      type={showConfirmPassword ? 'text' : 'password'}
                       name="confirmPassword"
-                      id="confirmPassword"
+                      placeholder="Confirm your password"
                       value={formData.confirmPassword}
                       onChange={handleChange}
-                      minLength={6}
-                      className="w-full border border-gray-300 rounded-xl shadow-sm px-4 py-3 pr-11 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 disabled:bg-gray-50 text-gray-900"
                       required
                       disabled={isLoading}
-                      placeholder="Confirm your password"
+                      className="w-full border border-gray-400 rounded-md px-3 py-3 text-base focus:border-[#0A66C2] focus:ring-[#0A66C2]"
                     />
-                    <button
-                      type="button"
-                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                      className="absolute inset-y-0 right-0 px-3 flex items-center justify-center rounded-r-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      {showConfirmPassword ? (
-                        <EyeSlashIcon className="w-4 h-4 text-gray-500" />
-                      ) : (
-                        <EyeIcon className="w-4 h-4 text-gray-500" />
-                      )}
+                    <button type="button" className="absolute right-3 top-3 text-gray-500" onClick={() => setShowConfirmPassword(!showConfirmPassword)}>
+                      {showConfirmPassword ? <EyeSlashIcon className="w-5 h-5" /> : <EyeIcon className="w-5 h-5" />}
                     </button>
                   </div>
-                  
-                  {/* Password Match Indicator */}
+
                   {formData.confirmPassword && (
-                    <div className={`text-xs mt-1 ${
-                      formData.password === formData.confirmPassword ? 'text-green-600' : 'text-red-600'
-                    }`}>
+                    <div className={`text-sm mt-2 ${formData.password === formData.confirmPassword ? 'text-green-600' : 'text-red-600'}`}>
                       {formData.password === formData.confirmPassword ? '✓ Passwords match' : '✗ Passwords do not match'}
                     </div>
                   )}
                 </div>
 
-                {/* Submit Button */}
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="w-full bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 disabled:from-gray-400 disabled:to-gray-500 text-white py-4 rounded-xl text-base font-semibold tracking-wide flex items-center justify-center gap-3 transition-all duration-200 transform hover:scale-[1.02] disabled:scale-100 shadow-lg hover:shadow-xl disabled:shadow"
+                  className="w-full bg-[#0A66C2] hover:bg-[#004182] text-white py-3 rounded-full text-base font-semibold transition-all shadow"
                 >
                   {isLoading ? (
-                    <>
-                      <ArrowPathIcon className="w-5 h-5 animate-spin" />
-                      <span>Setting up account...</span>
-                    </>
+                    <span className="inline-flex items-center gap-2"><ArrowPathIcon className="w-5 h-5 animate-spin" /> Setting up...</span>
                   ) : (
-                    <>
-                      <CheckCircleIcon className="w-5 h-5" />
-                      <span>Complete Setup & Login</span>
-                    </>
+                    'Complete setup & sign in'
                   )}
                 </button>
+
+                <div className="flex items-center my-3">
+                  <div className="flex-1 h-px bg-gray-300" />
+                  <span className="px-3 text-gray-500 text-sm">or</span>
+                  <div className="flex-1 h-px bg-gray-300" />
+                </div>
+
+                <div className="flex gap-3">
+                  <button type="button" onClick={() => router.push('/auth/login')} className="flex-1 border border-gray-500 text-gray-700 hover:bg-gray-100 py-3 rounded-full text-base font-semibold">
+                    Sign in
+                  </button>
+                  <button type="button" onClick={() => router.push('/auth/signup')} className="flex-1 border border-gray-500 text-gray-700 hover:bg-gray-100 py-3 rounded-full text-base font-semibold">
+                    Create new account
+                  </button>
+                </div>
               </form>
             </div>
           </div>
         </div>
       </main>
-      
+
       <Footer />
     </div>
   );
