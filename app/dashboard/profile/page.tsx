@@ -57,13 +57,11 @@ export default function ProfilePage() {
   const [education, setEducation] = useState<Education[]>([]);
   const [workExperience, setWorkExperience] = useState<WorkExperience[]>([]);
   const [skills, setSkills] = useState<Skill[]>([]);
- 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
- 
   const [activeSection, setActiveSection] = useState<'basic' | 'education' | 'experience' | 'skills'>('basic');
   const [editingEducation, setEditingEducation] = useState<number | null>(null);
   const [editingExperience, setEditingExperience] = useState<number | null>(null);
@@ -105,7 +103,7 @@ export default function ProfilePage() {
   const fetchProfileData = async () => {
     try {
       setLoading(true);
-     
+    
       // Fetch all profile data
       const [biodataRes, educationRes, experienceRes, skillsRes] = await Promise.all([
         api.get('/profile/biodata'),
@@ -116,7 +114,7 @@ export default function ProfilePage() {
       // Set user data from API
       const userData: User = biodataRes.data;
       setUser(userData);
-     
+    
       // Update form data from API response - use phoneNumber
       setFormData({
         firstName: userData.firstName || '',
@@ -128,19 +126,19 @@ export default function ProfilePage() {
         bio: userData.bio || '',
         profileImage: null,
       });
-      // Set other sections from API
-      setEducation(educationRes.data || []);
-      setWorkExperience(experienceRes.data || []);
-      setSkills(skillsRes.data || []);
+      // Set other sections from API - ensure they are arrays
+      setEducation(Array.isArray(educationRes.data) ? educationRes.data : []);
+      setWorkExperience(Array.isArray(experienceRes.data) ? experienceRes.data : []);
+      setSkills(Array.isArray(skillsRes.data) ? skillsRes.data : []);
     } catch (error: any) {
       console.error('Error fetching profile data:', error);
-     
+    
       // If unauthorized, redirect to login
       if (error.response?.status === 401) {
         router.push('/login');
         return;
       }
-     
+    
       setError('Failed to load profile data');
       setTimeout(() => setError(''), 3000);
     } finally {
@@ -152,7 +150,7 @@ export default function ProfilePage() {
 const refreshProfileData = async () => {
   try {
     setLoading(true);
-   
+  
     // Fetch all profile data in parallel for better performance
     const [biodataRes, educationRes, experienceRes, skillsRes] = await Promise.all([
       api.get('/profile/biodata'),
@@ -163,7 +161,7 @@ const refreshProfileData = async () => {
     // Update user state from API response
     const userData: User = biodataRes.data;
     setUser(userData);
-   
+  
     // Update form data from API - use phoneNumber as it comes from endpoint
     setFormData({
       firstName: userData.firstName || '',
@@ -175,10 +173,10 @@ const refreshProfileData = async () => {
       bio: userData.bio || '',
       profileImage: null,
     });
-    // Update other sections from API
-    setEducation(educationRes.data || []);
-    setWorkExperience(experienceRes.data || []);
-    setSkills(skillsRes.data || []);
+    // Update other sections from API - ensure they are arrays
+    setEducation(Array.isArray(educationRes.data) ? educationRes.data : []);
+    setWorkExperience(Array.isArray(experienceRes.data) ? experienceRes.data : []);
+    setSkills(Array.isArray(skillsRes.data) ? skillsRes.data : []);
   } catch (error) {
     console.error('Error refreshing profile data:', error);
     throw error;
@@ -195,17 +193,17 @@ const handleBasicInfoUpdate = async (e: React.FormEvent) => {
   try {
     // Send formData as-is since field names match API
     const response = await api.put('/profile/biodata', formData);
-   
+  
     if (response.status === 200) {
       setSuccess('Profile updated successfully!');
-     
+    
       // Update local state with API response
       const updatedUser = response.data;
       setUser(updatedUser);
-     
+    
       // Optionally update localStorage for other components
       localStorage.setItem('user', JSON.stringify(updatedUser));
-     
+    
       setTimeout(() => setSuccess(''), 3000);
     }
   } catch (error: any) {
@@ -246,7 +244,6 @@ const handleProfilePictureUpload = async (e: React.ChangeEvent<HTMLInputElement>
     });
  if (response.status === 200 || response.status === 201) {
   setSuccess('Profile picture updated successfully!');
- 
   // Refetch to confirm server update
   try {
     await refreshProfileData(); // This will update user state from server
@@ -260,7 +257,6 @@ const handleProfilePictureUpload = async (e: React.ChangeEvent<HTMLInputElement>
       localStorage.setItem('user', JSON.stringify(updatedUser)); // Optional: for other components
     }
   }
- 
   // ... timestamp update for existing img
   setTimeout(() => setSuccess(''), 3000);
 }
@@ -279,10 +275,10 @@ const handleProfilePictureUpload = async (e: React.ChangeEvent<HTMLInputElement>
   const handleAddEducation = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
-   
+  
     try {
       const response = await api.post('/profile/education', educationForm);
-     
+    
       if (response.status === 201) {
         setEducation([...education, response.data]);
         setEducationForm({
@@ -306,10 +302,10 @@ const handleProfilePictureUpload = async (e: React.ChangeEvent<HTMLInputElement>
   };
   const handleUpdateEducation = async (id: number) => {
     setSaving(true);
-   
+  
     try {
       const response = await api.put(`/profile/education/${id}`, educationForm);
-     
+    
       if (response.status === 200) {
         setEducation(education.map(edu => edu.id === id ? response.data : edu));
         setEditingEducation(null);
@@ -336,7 +332,7 @@ const handleProfilePictureUpload = async (e: React.ChangeEvent<HTMLInputElement>
     if (!confirm('Are you sure you want to delete this education entry?')) return;
     try {
       const response = await api.delete(`/profile/education/${id}`);
-     
+    
       if (response.status === 200) {
         setEducation(education.filter(edu => edu.id !== id));
         setSuccess('Education deleted successfully!');
@@ -352,10 +348,10 @@ const handleProfilePictureUpload = async (e: React.ChangeEvent<HTMLInputElement>
   const handleAddExperience = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
-   
+  
     try {
       const response = await api.post('/profile/experience', experienceForm);
-     
+    
       if (response.status === 201) {
         setWorkExperience([...workExperience, response.data]);
         setExperienceForm({
@@ -380,10 +376,10 @@ const handleProfilePictureUpload = async (e: React.ChangeEvent<HTMLInputElement>
   };
   const handleUpdateExperience = async (id: number) => {
     setSaving(true);
-   
+  
     try {
       const response = await api.put(`/profile/experience/${id}`, experienceForm);
-     
+    
       if (response.status === 200) {
         setWorkExperience(workExperience.map(exp => exp.id === id ? response.data : exp));
         setEditingExperience(null);
@@ -411,7 +407,7 @@ const handleProfilePictureUpload = async (e: React.ChangeEvent<HTMLInputElement>
     if (!confirm('Are you sure you want to delete this work experience?')) return;
     try {
       const response = await api.delete(`/profile/experience/${id}`);
-     
+    
       if (response.status === 200) {
         setWorkExperience(workExperience.filter(exp => exp.id !== id));
         setSuccess('Work experience deleted successfully!');
@@ -427,10 +423,10 @@ const handleProfilePictureUpload = async (e: React.ChangeEvent<HTMLInputElement>
   const handleAddSkill = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
-   
+  
     try {
       const response = await api.post('/profile/skills', skillForm);
-     
+    
       if (response.status === 201) {
         setSkills([...skills, response.data]);
         setSkillForm({ name: '', level: 'intermediate' });
@@ -449,7 +445,7 @@ const handleProfilePictureUpload = async (e: React.ChangeEvent<HTMLInputElement>
     if (!confirm('Are you sure you want to delete this skill?')) return;
     try {
       const response = await api.delete(`/profile/skills/${id}`);
-     
+    
       if (response.status === 200) {
         setSkills(skills.filter(skill => skill.id !== id));
         setSuccess('Skill deleted successfully!');
@@ -535,11 +531,6 @@ const handleProfilePictureUpload = async (e: React.ChangeEvent<HTMLInputElement>
     e.currentTarget.src = '/User-avatar.png';
   }}
 />
-{/* <img
-            src={company.companyLogo ? `${process.env.NEXT_PUBLIC_FILE_URL}/${user.profileImage}` : '/company-avatar.png'}
-            className="w-16 h-16 rounded-lg object-cover"
-            alt={company.companyName}
-          /> */}
                   </div>
                   <button
                     onClick={() => fileInputRef.current?.click()}
@@ -634,7 +625,7 @@ const handleProfilePictureUpload = async (e: React.ChangeEvent<HTMLInputElement>
               {activeSection === 'basic' && (
                 <form onSubmit={handleBasicInfoUpdate} className="space-y-6">
                   <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Basic Information</h2>
-                 
+                
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -648,7 +639,7 @@ const handleProfilePictureUpload = async (e: React.ChangeEvent<HTMLInputElement>
                         required
                       />
                     </div>
-                   
+                  
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                         Other Names
@@ -674,7 +665,7 @@ const handleProfilePictureUpload = async (e: React.ChangeEvent<HTMLInputElement>
                         required
                       />
                     </div>
-                   
+                  
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                         Email
@@ -700,7 +691,7 @@ const handleProfilePictureUpload = async (e: React.ChangeEvent<HTMLInputElement>
                         className="w-full border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-2 bg-white dark:bg-gray-900"
                       />
                     </div>
-                   
+                  
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                         Location
@@ -774,7 +765,7 @@ const handleProfilePictureUpload = async (e: React.ChangeEvent<HTMLInputElement>
                       <h3 className="font-semibold text-gray-900 dark:text-white mb-4">
                         {editingEducation === -1 ? 'Add New Education' : 'Edit Education'}
                       </h3>
-                     
+                    
                       <div className="space-y-4">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div>
@@ -789,7 +780,7 @@ const handleProfilePictureUpload = async (e: React.ChangeEvent<HTMLInputElement>
                               required
                             />
                           </div>
-                         
+                        
                           <div>
                             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                               Degree *
@@ -827,7 +818,7 @@ const handleProfilePictureUpload = async (e: React.ChangeEvent<HTMLInputElement>
                               required
                             />
                           </div>
-                         
+                        
                           <div>
                             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                               End Date
@@ -907,7 +898,7 @@ const handleProfilePictureUpload = async (e: React.ChangeEvent<HTMLInputElement>
                                 <p className="mt-2 text-gray-700 dark:text-gray-300">{edu.description}</p>
                               )}
                             </div>
-                           
+                          
                             <div className="flex space-x-2 ml-4">
                               <button
                                 onClick={() => {
@@ -965,7 +956,7 @@ const handleProfilePictureUpload = async (e: React.ChangeEvent<HTMLInputElement>
                       <h3 className="font-semibold text-gray-900 dark:text-white mb-4">
                         {editingExperience === -1 ? 'Add New Work Experience' : 'Edit Work Experience'}
                       </h3>
-                     
+                    
                       <div className="space-y-4">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div>
@@ -980,7 +971,7 @@ const handleProfilePictureUpload = async (e: React.ChangeEvent<HTMLInputElement>
                               required
                             />
                           </div>
-                         
+                        
                           <div>
                             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                               Position *
@@ -1019,7 +1010,7 @@ const handleProfilePictureUpload = async (e: React.ChangeEvent<HTMLInputElement>
                               required
                             />
                           </div>
-                         
+                        
                           <div>
                             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                               End Date
@@ -1122,7 +1113,7 @@ const handleProfilePictureUpload = async (e: React.ChangeEvent<HTMLInputElement>
                                 <p className="mt-2 text-gray-700 dark:text-gray-300">{exp.description}</p>
                               )}
                             </div>
-                           
+                          
                             <div className="flex space-x-2 ml-4">
                               <button
                                 onClick={() => {
@@ -1172,7 +1163,7 @@ const handleProfilePictureUpload = async (e: React.ChangeEvent<HTMLInputElement>
                   {editingSkill === -1 && (
                     <form onSubmit={handleAddSkill} className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg mb-6">
                       <h3 className="font-semibold text-gray-900 dark:text-white mb-4">Add New Skill</h3>
-                     
+                    
                       <div className="space-y-4">
                         <div>
                           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -1242,7 +1233,7 @@ const handleProfilePictureUpload = async (e: React.ChangeEvent<HTMLInputElement>
                                   {skill.level.charAt(0).toUpperCase() + skill.level.slice(1)}
                                 </span>
                               </div>
-                             
+                            
                               <button
                                 onClick={() => handleDeleteSkill(skill.id)}
                                 className="text-red-600 hover:text-red-800"
