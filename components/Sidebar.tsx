@@ -178,7 +178,7 @@ export default function Sidebar() {
   const roleBasedNavItems = {
     Driver: [
       { href: '/dashboard', icon: faTachometerAlt, label: 'Dashboard' },
-      { href: '/profile', icon: faUser, label: 'Profile' },
+      { href: '/dashboard/profile', icon: faUser, label: 'Profile' },
       { href: '/followers?type=following', icon: faUsers, label: 'Following' },
       { href: '/followers?type=followers', icon: faUserCheck, label: 'Followers' },
       { href: '/certifications', icon: faAward, label: 'Certifications' },
@@ -190,11 +190,11 @@ export default function Sidebar() {
     ],
     Recruiter: [
       { href: '/dashboard', icon: faTachometerAlt, label: 'Dashboard' },
-      { href: '/profile', icon: faUser, label: 'Profile' },
+      { href: '/dashboard/profile', icon: faUser, label: 'Profile' },
       { href: '/dashboard/recruiter/companies', icon: faWarehouse, label: 'Companies' },
       { href: '/dashboard/recruiter/candidates', icon: faUserTie, label: 'Candidates' },
       { href: '/dashboard/recruiter/jobs', icon: faBriefcase, label: 'Job Posts' },
-      { href: '/recruiter/applications', icon: faFileAlt, label: 'Applications' },
+      { href: '/dashboard/recruiter/applications', icon: faFileAlt, label: 'Applications' },
       { href: '#', icon: faComments, label: 'Messages', isMessage: true },
       { href: '/notifications', icon: faBell, label: 'Notifications' },
       { href: '/settings', icon: faCog, label: 'Settings' },

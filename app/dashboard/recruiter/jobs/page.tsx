@@ -6,6 +6,7 @@ import HeaderLoggedIn from "@/components/HeaderLoggedIn";
 import api from '@/lib/api';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faEdit, faSpinner, faTrash } from '@fortawesome/free-solid-svg-icons';
+import Link from 'next/link';
 
 interface User {
   id: string;
@@ -232,11 +233,13 @@ export default function JobsPage() {
                 <h2 className="text-2xl font-bold text-gray-900 dark:text-white">My Jobs</h2>
                 <p className="text-gray-600 dark:text-gray-400 mt-1">Manage your posted job listings.</p>
               </div>
-              <a href="/dashboard/recruiter/jobs/post-a-job">
-              <button className="bg-[#00639C] text-white px-6 py-2 rounded-full hover:bg-[#005A8C] text-sm font-medium">
-                Post New Job
-              </button>
-              </a>
+              
+              <Link
+                        href="/dashboard/recruiter/jobs/post-a-job"
+                        className="bg-[#00639C] text-white px-6 py-2 rounded-full hover:bg-[#005A8C] text-sm font-medium"
+                      >
+                        Post New Job
+                </Link>
             </div>
 
             {/* Jobs List */}
@@ -245,11 +248,12 @@ export default function JobsPage() {
                 <div className="text-6xl text-gray-400 mb-4">💼</div>
                 <p className="text-gray-500 dark:text-gray-400 text-lg">No jobs posted yet.</p>
                 <p className="text-gray-500 dark:text-gray-400 mb-4">Start by posting your first job opening!</p>
-                <a href="/dashboard/recruiter/jobs/post-a-job">
-                <button className="bg-[#00639C] text-white px-4 py-2 rounded-full hover:bg-[#005A8C]">
-                  Post a Job
-                </button>
-                </a>
+                <Link
+                        href="/dashboard/recruiter/jobs/post-a-job"
+                        className="bg-[#00639C] text-white px-6 py-2 rounded-full hover:bg-[#005A8C] text-sm font-medium"
+                      >
+                        Post New Job
+                </Link>
               </div>
             ) : (
               <div className="space-y-4">
