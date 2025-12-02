@@ -205,13 +205,13 @@ export default function HeaderLoggedIn() {
       { href: '#', icon: faComments, label: 'Messages' },
     ],
     Instructor: [
-      { href: '/instructor/dashboard', icon: faHouse, label: 'Feed' },
+      { href: '/dashboard', icon: faHouse, label: 'Feed' },
       { href: '/instructor/my-courses', icon: faBook, label: 'Courses' },
       { href: '/instructor/schedule', icon: faCalendar, label: 'Schedule' },
       { href: '#', icon: faComments, label: 'Messages' },
     ],
     Recruiter: [
-      { href: '/recruiter/dashboard', icon: faHouse, label: 'Dashboard' },
+      { href: '/dashboard', icon: faHouse, label: 'Dashboard' },
       { href: '/recruiter/jobs', icon: faBriefcase, label: 'Post Jobs' },
       { href: '/recruiter/applications', icon: faSearch, label: 'Applications' },
       { href: '#', icon: faComments, label: 'Messages' },
@@ -220,7 +220,7 @@ export default function HeaderLoggedIn() {
 
   // User dropdown menu items
   const userMenuItems = [
-    { href: '/profile', icon: faUser, label: 'Profile' },
+    { href: '/dashboard/profile', icon: faUser, label: 'Profile' },
     { href: '/settings', icon: faCog, label: 'Settings' },
     { icon: faSignOutAlt, label: 'Logout', onClick: handleLogout, isLogout: true },
   ];
