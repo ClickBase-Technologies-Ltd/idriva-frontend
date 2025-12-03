@@ -291,7 +291,7 @@ export default function HeaderLoggedIn() {
                       >
                         <div className="flex items-center space-x-3">
                           <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                            result.type === 'user' ? 'bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300' :
+                            result.type === 'user' ? 'bg-blue-100 dark:bg-blue-900 text-[#0A66C2] dark:text-blue-300' :
                             result.type === 'job' ? 'bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-300' :
                             result.type === 'certification' ? 'bg-purple-100 dark:bg-purple-900 text-purple-600 dark:text-purple-300' :
                             'bg-orange-100 dark:bg-orange-900 text-orange-600 dark:text-orange-300'

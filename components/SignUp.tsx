@@ -230,12 +230,12 @@ export default function SignupPage() {
           ))}
         </div>
 
-        <button onClick={handleOtpSubmit} disabled={otpLoading} className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white py-3 rounded-xl font-semibold mb-4">
+        <button onClick={handleOtpSubmit} disabled={otpLoading} className="w-full bg-[#0A66C2] hover:bg-blue-700 disabled:bg-blue-400 text-white py-3 rounded-xl font-semibold mb-4">
           {otpLoading ? "Verifying..." : "Verify OTP"}
         </button>
 
         <div className="text-center">
-          <button onClick={handleResendOtp} disabled={resendLoading} className="text-blue-600 hover:text-blue-700 disabled:text-blue-400 font-medium">
+          <button onClick={handleResendOtp} disabled={resendLoading} className="text-[#0A66C2] hover:text-blue-700 disabled:text-blue-400 font-medium">
             {resendLoading ? "Sending..." : "Resend OTP"}
           </button>
         </div>
@@ -299,7 +299,7 @@ export default function SignupPage() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-1 flex items-center gap-2">
-                      <UserIcon className="w-4 h-4 text-blue-600" /> First Name *
+                      <UserIcon className="w-4 h-4 text-[#0A66C2]" /> First Name *
                     </label>
                     <input name="firstName" value={formData.firstName} onChange={handleChange} required disabled={isLoading} className="w-full border border-gray-400 rounded-md px-3 py-3 text-base" placeholder="John" />
                     {fieldErrors.firstName && <p className="text-red-600 text-sm mt-1">{fieldErrors.firstName}</p>}
@@ -307,7 +307,7 @@ export default function SignupPage() {
 
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-1 flex items-center gap-2">
-                      <UserIcon className="w-4 h-4 text-blue-600" /> Last Name *
+                      <UserIcon className="w-4 h-4 text-[#0A66C2]" /> Last Name *
                     </label>
                     <input name="lastName" value={formData.lastName} onChange={handleChange} required disabled={isLoading} className="w-full border border-gray-400 rounded-md px-3 py-3 text-base" placeholder="Doe" />
                     {fieldErrors.lastName && <p className="text-red-600 text-sm mt-1">{fieldErrors.lastName}</p>}
@@ -315,7 +315,7 @@ export default function SignupPage() {
 
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-1 flex items-center gap-2">
-                      <UserIcon className="w-4 h-4 text-blue-600" /> Other Names
+                      <UserIcon className="w-4 h-4 text-[#0A66C2]" /> Other Names
                     </label>
                     <input name="otherNames" value={formData.otherNames} onChange={handleChange} disabled={isLoading} className="w-full border border-gray-400 rounded-md px-3 py-3 text-base" placeholder="Middle names (optional)" />
                   </div>
@@ -324,7 +324,7 @@ export default function SignupPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-1 flex items-center gap-2">
-                      <EnvelopeIcon className="w-4 h-4 text-blue-600" /> Email Address *
+                      <EnvelopeIcon className="w-4 h-4 text-[#0A66C2]" /> Email Address *
                     </label>
                     <input name="email" type="email" value={formData.email} onChange={handleChange} required disabled={isLoading} className="w-full border border-gray-400 rounded-md px-3 py-3 text-base" placeholder="john.doe@example.com" />
                     {fieldErrors.email && <p className="text-red-600 text-sm mt-1">{fieldErrors.email}</p>}
@@ -332,7 +332,7 @@ export default function SignupPage() {
 
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-1 flex items-center gap-2">
-                      <PhoneIcon className="w-4 h-4 text-blue-600" /> Phone Number *
+                      <PhoneIcon className="w-4 h-4 text-[#0A66C2]" /> Phone Number *
                     </label>
                     <input name="phoneNumber" type="tel" value={formData.phoneNumber} onChange={handleChange} required disabled={isLoading} className="w-full border border-gray-400 rounded-md px-3 py-3 text-base" placeholder="+234 (123) 456-7890" />
                     {fieldErrors.phoneNumber && <p className="text-red-600 text-sm mt-1">{fieldErrors.phoneNumber}</p>}
@@ -341,7 +341,7 @@ export default function SignupPage() {
 
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-1 flex items-center gap-2">
-                    <IdentificationIcon className="w-4 h-4 text-blue-600" /> Professional Role *
+                    <IdentificationIcon className="w-4 h-4 text-[#0A66C2]" /> Professional Role *
                   </label>
                   <select name="role" value={formData.role} onChange={handleChange} disabled={isLoading || loadingRoles} className="w-full border border-gray-400 rounded-md px-3 py-3 text-base bg-white">
                     {loadingRoles ? <option>Loading roles...</option> : <>

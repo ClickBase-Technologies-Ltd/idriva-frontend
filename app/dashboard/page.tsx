@@ -624,7 +624,7 @@ export default function FeedPage() {
           >
             {/* New Posts Notification */}
             {hasNewPosts && (
-              <div className="sticky top-0 z-10 bg-blue-500 text-white p-3 rounded-lg shadow-lg text-center cursor-pointer hover:bg-blue-600 transition-colors">
+              <div className="sticky top-0 z-10 bg-blue-500 text-white p-3 rounded-lg shadow-lg text-center cursor-pointer hover:bg-[#0A66C2] transition-colors">
                 <button 
                   onClick={loadNewPosts}
                   className="w-full flex items-center justify-center gap-2 font-medium"

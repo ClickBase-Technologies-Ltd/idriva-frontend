@@ -145,7 +145,7 @@ export default function CreateLessonPage() {
                         <button
                           type="submit"
                           disabled={saving}
-                          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm flex items-center"
+                          className="px-4 py-2 bg-[#0A66C2] hover:bg-blue-700 text-white rounded-md text-sm flex items-center"
                         >
                           {saving ? 'Saving...' : 'Create lesson'}
                         </button>

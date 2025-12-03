@@ -374,14 +374,14 @@ export default function Sidebar() {
             <div className="flex space-x-4 text-xs text-gray-600 dark:text-gray-400 mt-3">
               <Link 
                 href="/followers?type=followers" 
-                className="text-center hover:text-blue-600 transition-colors"
+                className="text-center hover:text-[#0A66C2] transition-colors"
               >
                 <div className="font-semibold text-gray-800 dark:text-white">42</div>
                 <div>Followers</div>
               </Link>
               <Link 
                 href="/followers?type=following" 
-                className="text-center hover:text-blue-600 transition-colors"
+                className="text-center hover:text-[#0A66C2] transition-colors"
               >
                 <div className="font-semibold text-gray-800 dark:text-white">128</div>
                 <div>Following</div>
@@ -397,7 +397,7 @@ export default function Sidebar() {
               <button
                 key={item.label}
                 onClick={() => window.dispatchEvent(new CustomEvent('openChat'))}
-                className="relative w-full text-left block px-3 py-2 rounded-md hover:bg-blue-600 hover:text-white transition flex items-center"
+                className="relative w-full text-left block px-3 py-2 rounded-md hover:bg-[#0A66C2] hover:text-white transition flex items-center"
               >
                 <FontAwesomeIcon icon={item.icon} className="mr-2 w-4 h-4" />
                 {item.label}
@@ -409,8 +409,8 @@ export default function Sidebar() {
               <Link
                 key={item.label}
                 href={item.href}
-                className={`block px-3 py-2 rounded-md hover:bg-blue-600 hover:text-white transition flex items-center ${
-                  pathname === item.href ? 'bg-blue-600 text-white' : ''
+                className={`block px-3 py-2 rounded-md hover:bg-[#0A66C2] hover:text-white transition flex items-center ${
+                  pathname === item.href ? 'bg-[#0A66C2] text-white' : ''
                 }`}
               >
                 <FontAwesomeIcon icon={item.icon} className="mr-2 w-4 h-4" />
@@ -451,7 +451,7 @@ export default function Sidebar() {
                         className={`text-xs mt-1 ${
                           person.is_following 
                             ? 'text-gray-500' 
-                            : 'text-blue-600 hover:underline'
+                            : 'text-[#0A66C2] hover:underline'
                         }`}
                         disabled={person.is_following}
                       >

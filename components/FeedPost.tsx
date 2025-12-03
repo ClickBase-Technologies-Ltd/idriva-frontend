@@ -114,19 +114,19 @@ export default function FeedPost({ post, user, onLike, onShare, onComment, onDel
         <div className="flex space-x-4">
           <button
             onClick={() => onShowModal('likes', post.postId)}
-            className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer"
+            className="hover:text-[#0A66C2] dark:hover:text-blue-400 transition-colors cursor-pointer"
           >
             {post.likes} {post.likes === 1 ? 'like' : 'likes'}
           </button>
           <button
             onClick={() => onShowModal('comments', post.postId)}
-            className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer"
+            className="hover:text-[#0A66C2] dark:hover:text-blue-400 transition-colors cursor-pointer"
           >
             {post.comments.length} {post.comments.length === 1 ? 'comment' : 'comments'}
           </button>
           <button
             onClick={() => onShowModal('shares', post.postId)}
-            className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer"
+            className="hover:text-[#0A66C2] dark:hover:text-blue-400 transition-colors cursor-pointer"
           >
             {post.shares} {post.shares === 1 ? 'share' : 'shares'}
           </button>
@@ -191,7 +191,7 @@ export default function FeedPost({ post, user, onLike, onShare, onComment, onDel
               <button
                 type="submit"
                 disabled={!commentText.trim() || isSubmittingComment}
-                className="px-4 py-2 bg-blue-600 text-white rounded-full text-sm hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
+                className="px-4 py-2 bg-[#0A66C2] text-white rounded-full text-sm hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
               >
                 <FontAwesomeIcon icon={faPaperPlane} className="w-4 h-4" />
                 {isSubmittingComment ? 'Posting...' : 'Post'}

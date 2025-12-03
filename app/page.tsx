@@ -35,12 +35,12 @@ export default function HomePage() {
             </Link>
             <p className="text-sm text-gray-600 mt-2">
               By clicking Continue, you agree to iDriva's{" "}
-              <Link href="#" className="text-blue-600 underline">User Agreement</Link>,{" "}
-              <Link href="#" className="text-blue-600 underline">Privacy Policy</Link>, and{" "}
-              <Link href="#" className="text-blue-600 underline">Cookie Policy</Link>.
+              <Link href="#" className="text-[#0A66C2] underline">User Agreement</Link>,{" "}
+              <Link href="#" className="text-[#0A66C2] underline">Privacy Policy</Link>, and{" "}
+              <Link href="#" className="text-[#0A66C2] underline">Cookie Policy</Link>.
             </p>
             <p className="mt-4 text-sm">
-              New to iDriva? <Link href="/auth/signup" className="text-blue-600 font-medium">Join now</Link>
+              New to iDriva? <Link href="/auth/signup" className="text-[#0A66C2] font-medium">Join now</Link>
             </p>
           </div>
           <div className="w-full lg:w-1/2 flex justify-center mb-10 lg:mb-0">
@@ -68,7 +68,7 @@ export default function HomePage() {
                 <Link
                   key={topic}
                   href="#"
-                  className={`px-4 py-2 border rounded-full text-sm hover:bg-gray-200 transition ${topic === "Show all topics" ? "text-blue-600 hover:bg-gray-100" : ""}`}
+                  className={`px-4 py-2 border rounded-full text-sm hover:bg-gray-200 transition ${topic === "Show all topics" ? "text-[#0A66C2] hover:bg-gray-100" : ""}`}
                 >
                   {topic}
                 </Link>

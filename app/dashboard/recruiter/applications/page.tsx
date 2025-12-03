@@ -360,8 +360,8 @@ export default function ApplicationsPage() {
               {/* Stats */}
               <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-4">
                 <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg text-center">
-                  <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{stats.total}</div>
-                  <div className="text-sm text-blue-600 dark:text-blue-400">Total</div>
+                  <div className="text-2xl font-bold text-[#0A66C2] dark:text-blue-400">{stats.total}</div>
+                  <div className="text-sm text-[#0A66C2] dark:text-blue-400">Total</div>
                 </div>
                 <div className="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-lg text-center">
                   <div className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">{stats.pending}</div>

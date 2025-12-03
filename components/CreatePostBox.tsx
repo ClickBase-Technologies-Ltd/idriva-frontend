@@ -139,7 +139,7 @@ export default function CreatePostBox({ user, onPostCreated, onError }: CreatePo
       <div className="flex justify-between items-center mt-3">
         <div className="flex space-x-4 text-sm items-center">
           {/* Photo Upload */}
-          <label className={`cursor-pointer text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 relative flex items-center gap-2 transition-colors ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}>
+          <label className={`cursor-pointer text-[#0A66C2] hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 relative flex items-center gap-2 transition-colors ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}>
             <FontAwesomeIcon icon={faImage} className="w-4 h-4" />
             Photo
             <input 
@@ -152,7 +152,7 @@ export default function CreatePostBox({ user, onPostCreated, onError }: CreatePo
           </label>
 
           {/* Video Upload */}
-          <label className={`cursor-pointer text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 relative flex items-center gap-2 transition-colors ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}>
+          <label className={`cursor-pointer text-[#0A66C2] hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 relative flex items-center gap-2 transition-colors ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}>
             <FontAwesomeIcon icon={faVideo} className="w-4 h-4" />
             Video
             <input 
@@ -165,7 +165,7 @@ export default function CreatePostBox({ user, onPostCreated, onError }: CreatePo
           </label>
 
           {/* Article/File Upload */}
-          <label className={`cursor-pointer text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 relative flex items-center gap-2 transition-colors ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}>
+          <label className={`cursor-pointer text-[#0A66C2] hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 relative flex items-center gap-2 transition-colors ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}>
             <FontAwesomeIcon icon={faFileAlt} className="w-4 h-4" />
             Document
             <input 
@@ -181,7 +181,7 @@ export default function CreatePostBox({ user, onPostCreated, onError }: CreatePo
         <button 
           onClick={handleSubmit}
           disabled={isLoading || !text.trim()}
-          className="bg-blue-600 text-white px-5 py-2 rounded-full text-sm hover:bg-blue-700 transition-colors flex items-center gap-2 disabled:bg-gray-400 disabled:cursor-not-allowed"
+          className="bg-[#0A66C2] text-white px-5 py-2 rounded-full text-sm hover:bg-blue-700 transition-colors flex items-center gap-2 disabled:bg-gray-400 disabled:cursor-not-allowed"
         >
           {isLoading ? (
             <>

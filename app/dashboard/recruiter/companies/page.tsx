@@ -307,7 +307,7 @@ export default function CompaniesPage() {
             {creatingNew && (
               <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm">
                 <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                  <FontAwesomeIcon icon={faBuilding} className="text-blue-600" />
+                  <FontAwesomeIcon icon={faBuilding} className="text-[#0A66C2]" />
                   Add New Company
                 </h3>
                 <CompanyForm
@@ -581,7 +581,7 @@ function CompanyCard({
           href={company.companyWebsite} 
           target="_blank" 
           rel="noopener noreferrer"
-          className="text-blue-600 hover:text-blue-800 dark:text-blue-400 text-sm flex items-center gap-2"
+          className="text-[#0A66C2] hover:text-blue-800 dark:text-blue-400 text-sm flex items-center gap-2"
         >
           <FontAwesomeIcon icon={faGlobe} />
           {company.companyWebsite}
