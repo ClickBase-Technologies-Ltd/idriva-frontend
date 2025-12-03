@@ -200,7 +200,7 @@ export default function HeaderLoggedIn() {
   const roleBasedMenus = {
     Driver: [
       { href: '/driver/dashboard', icon: faHouse, label: 'Home' },
-      { href: '/jobs', icon: faBriefcase, label: 'Jobs' },
+      { href: '/dashboard/driver/jobs', icon: faBriefcase, label: 'Jobs' },
       { href: '/certifications', icon: faCertificate, label: 'Certifications' },
       { href: '#', icon: faComments, label: 'Messages' },
     ],
@@ -225,7 +225,10 @@ export default function HeaderLoggedIn() {
     { icon: faSignOutAlt, label: 'Logout', onClick: handleLogout, isLogout: true },
   ];
 
-  const currentMenus = user ? roleBasedMenus[user.role as keyof typeof roleBasedMenus] : roleBasedMenus.Driver;
+  // Safely get current menus, defaulting to Driver if role is invalid/unknown
+  const currentMenus = user && roleBasedMenus[user.role as keyof typeof roleBasedMenus]
+    ? roleBasedMenus[user.role as keyof typeof roleBasedMenus]
+    : roleBasedMenus.Driver;
 
   if (loading) {
     return (

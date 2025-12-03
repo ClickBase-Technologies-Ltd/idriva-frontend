@@ -26,7 +26,7 @@ interface Job {
   jobStatus: string;
   companyName: string;
   companyLogo: string | null;
-  application_count: number;
+  applications_count: number;
   created_at: string;
   image_url?: string;
 }
@@ -518,7 +518,7 @@ function JobCard({
                   year: 'numeric',
                   month: 'long',
                   day: 'numeric',
-                })} • {job.application_count} application{job.application_count !== 1 ? 's' : ''}
+                })} • {job.applications_count} application{job.applications_count !== 1 ? 's' : ''}
               </p>
             </div>
           </div>
@@ -540,7 +540,7 @@ function JobCard({
                       }}
                       className="flex items-center px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 w-full text-left"
                     >
-                      👥 View Applications ({job.application_count ?? 0})
+                      👥 View Applications ({job.applications_count ?? 0})
                     </button>
                   </li>
                   <li>

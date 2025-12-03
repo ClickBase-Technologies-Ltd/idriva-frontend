@@ -31,12 +31,10 @@ interface LoginResponse {
   email?: string;
   phoneNumber?: string;
   role?: string;
-  state?: string;
-  community?: string;
-  stateId?: number;
-  communityId?: number;
+  profileImage?: string;
+  coverImage?: string;
   id?: string;
-  access_token?: string;
+//   access_token?: string;
 }
 
 export default function LoginPage() {
@@ -83,12 +81,9 @@ export default function LoginPage() {
           email: data.email,
           phoneNumber: data.phoneNumber,
           role: data.role,
-          access_token: data.access_token,
-          state: data.state,
-          community: data.community,
-          stateId: data.stateId,
-          communityId: data.communityId,
-          id: data.id,
+         profileImage: data.profileImage,
+         coverImage: data.coverImage,
+        //   id: data.id,
         };
 
         localStorage.setItem("user", JSON.stringify(userData));

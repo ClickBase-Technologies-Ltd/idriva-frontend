@@ -33,11 +33,18 @@ interface User {
   id: string;
   firstName: string;
   lastName: string;
+  otherNames?: string;
   role: string;
   email?: string;
   phoneNumber?: string;
-  profile_picture?: string;
+  profileImage?: string | null;
+  coverImage?: string | null;
+  followersCount?: number;
+  followingCount?: number;
+  suggestedUsers?: SuggestedUser[];
+  unreadCount?: number;
 }
+
 
 export default function Sidebar() {
   const [isOpen, setIsOpen] = useState(false);
@@ -54,48 +61,55 @@ export default function Sidebar() {
     const fetchUserData = async () => {
       try {
         setLoading(true);
-        console.log('Fetching user data from API...');
         
         // First try to get from localStorage (from login)
-        const storedUser = localStorage.getItem('user');
-        if (storedUser) {
-          console.log('Found user in localStorage:', storedUser);
-          const userData = JSON.parse(storedUser);
-          setUser({
-            id: userData.id || '1',
-            firstName: userData.firstName || 'First',
-            lastName: userData.lastName || 'Last',
-            role: userData.role || 'Driver',
-            email: userData.email,
-            phoneNumber: userData.phoneNumber,
-            profile_picture: userData.profile_picture
-          });
-          setLoading(false);
-          return;
-        }
+        // const storedUser = localStorage.getItem('user');
+        // if (storedUser) {
+        //   console.log('Found user in localStorage:', storedUser);
+        //   const userData = JSON.parse(storedUser);
+        //   setUser({
+        //     id: userData.id || '1',
+        //     firstName: userData.firstName || 'First',
+        //     lastName: userData.lastName || 'Last',
+        //     role: userData.role || 'Driver',
+        //     email: userData.email,
+        //     phoneNumber: userData.phoneNumber,
+        //     profileImage: userData.profileImage,
+        //     coverImage: userData.coverImage
+        //   });
+        //   setLoading(false);
+        //   return;
+        // }
 
         // If no localStorage, try API endpoint
-        console.log('No localStorage data, trying API endpoint...');
         const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/user`, {
           credentials: 'include'
         });
         
-        console.log('API Response status:', response.status);
         
         if (response.ok) {
-          const userData = await response.json();
-          console.log('API User data:', userData);
-          
-          setUser({
-            id: userData.id || '1',
-            firstName: userData.firstName || 'API First',
-            lastName: userData.lastName || 'API Last',
-            role: userData.role || 'driver',
-            email: userData.email,
-            phoneNumber: userData.phoneNumber,
-            profile_picture: userData.profile_picture
-          });
-        } else {
+  const userData = await response.json();
+  console.log(userData);
+
+  setUser({
+    id: userData.user?.id || '1',
+    firstName: userData.user?.full_name?.split(" ")[0] || 'First Name',
+    lastName: userData.user?.full_name?.split(" ").slice(1).join(" ") || 'Last Name',
+    otherNames: userData.user?.full_name?.split(" ").slice(2).join(" ") || '',
+    role: userData.user?.role || 'Driver',
+    email: userData.user?.email || '',
+    phoneNumber: userData.user?.phoneNumber || '',
+    profileImage: userData.profile?.profileImage || null,
+    coverImage: userData.profile?.coverImage || null,
+    followersCount: userData.followersCount,
+    followingCount: userData.followingCount,
+    suggestedUsers: userData.suggestedUsers,
+    unreadCount: userData.unreadCount
+  });
+
+  setLoading(false);
+}
+ else {
           console.error('API failed with status:', response.status);
           setError('Failed to fetch user data');
           // Set fallback user for testing
@@ -258,13 +272,13 @@ export default function Sidebar() {
     {
       id: '2',
       full_name: 'Jane Smith',
-      profile_picture: '/avatar.png',
+      profileImage: '/avatar.png',
       is_following: false,
     },
     {
       id: '3',
       full_name: 'Mike Johnson',
-      profile_picture: '/avatar.png',
+      profileImage: '/avatar.png',
       is_following: true,
     },
   ];
@@ -272,12 +286,12 @@ export default function Sidebar() {
   const fullName = `${currentUser.firstName} ${currentUser.lastName}`.trim();
   const navItems = roleBasedNavItems[currentUser.role as keyof typeof roleBasedNavItems] || roleBasedNavItems.driver;
 
-  console.log('Rendering sidebar with user:', {
-    fullName,
-    role: currentUser.role,
-    hasFirstName: !!currentUser.firstName,
-    hasLastName: !!currentUser.lastName
-  });
+//   console.log('Rendering sidebar with user:', {
+//     fullName,
+//     role: currentUser.role,
+//     hasFirstName: !!currentUser.firstName,
+//     hasLastName: !!currentUser.lastName
+//   });
 
   return (
     <div className="relative z-50 lg:static">
@@ -310,21 +324,34 @@ export default function Sidebar() {
         {/* Cover + Profile */}
         <div className="relative">
           <Image
-            src={'/cover_photo.jpg'}
-            alt="Cover Photo"
-            width={256}
-            height={96}
-            className="w-full h-24 object-cover rounded-t-lg"
-          />
-          <div className="absolute left-4 -bottom-6">
-            <Image
-              src={currentUser.profile_picture || '/avatar.png'}
-              alt="Profile Picture"
-              width={64}
-              height={64}
-              className="w-16 h-16 rounded-full border-4 border-white dark:border-gray-900 object-cover"
-            />
-          </div>
+  src={
+    currentUser?.coverImage
+      ? `${process.env.NEXT_PUBLIC_FILE_URL}/${currentUser.coverImage}`
+      : '/cover_photo.jpg'
+  }
+  alt="Cover Photo"
+  width={256}
+  height={96}
+  className="w-full h-24 object-cover rounded-t-lg"
+  onError={(e) => {
+    e.currentTarget.src = '/cover_photo.jpg';
+  }}
+/>
+
+     <div className="absolute left-4 -bottom-6">
+  <Image
+    src={
+      currentUser?.profileImage
+        ? `${process.env.NEXT_PUBLIC_FILE_URL}/${currentUser.profileImage}`
+        : '/avatar.png'
+    }
+    alt="Profile Picture"
+    width={64}
+    height={64}
+    className="w-16 h-16 rounded-full border-4 border-white dark:border-gray-900 object-cover"
+  />
+</div>
+
         </div>
 
         {/* Name and Stats */}
@@ -409,7 +436,7 @@ export default function Sidebar() {
                 {mockSuggestedUsers.map((person) => (
                   <div key={person.id} className="flex items-center space-x-2">
                     <Image
-                      src={person.profile_picture || '/avatar.png'}
+                      src={person.profileImage || '/avatar.png'}
                       alt={person.full_name}
                       width={32}
                       height={32}
