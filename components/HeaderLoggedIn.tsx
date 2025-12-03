@@ -199,8 +199,9 @@ export default function HeaderLoggedIn() {
   // Role-based menu items with Font Awesome icons
   const roleBasedMenus = {
     Driver: [
-      { href: '/driver/dashboard', icon: faHouse, label: 'Home' },
+      { href: '/ddashboard', icon: faHouse, label: 'Home' },
       { href: '/dashboard/driver/jobs', icon: faBriefcase, label: 'Jobs' },
+      { href: '/dashboard/learning', icon: faBook, label: 'Learning' },
       { href: '/certifications', icon: faCertificate, label: 'Certifications' },
       { href: '#', icon: faComments, label: 'Messages' },
     ],
