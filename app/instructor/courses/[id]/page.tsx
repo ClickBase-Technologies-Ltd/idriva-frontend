@@ -1,5 +1,8 @@
 // ...existing code...
 'use client';
+
+export const dynamic = "force-dynamic"; // ✅ Fix for Next.js 16 + dynamic route
+
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import HeaderLoggedIn from '@/components/HeaderLoggedIn';
@@ -34,7 +37,6 @@ export default function CourseManagePage() {
     if (!id) return;
     fetchCourse();
     fetchModulesForCourse();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   async function fetchCourse() {
@@ -105,7 +107,6 @@ export default function CourseManagePage() {
   function toggleModuleOpen(m: ModuleItem) {
     setOpenModules(prev => {
       const next = { ...prev, [m.id]: !prev[m.id] };
-      // lazy load lessons when opening
       if (next[m.id] && !lessonsByModule[m.id]) fetchLessonsForModule(m.id);
       return next;
     });

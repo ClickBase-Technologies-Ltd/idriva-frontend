@@ -630,7 +630,7 @@ export default function CreateModulePage() {
               <div className="flex items-center justify-between px-6 py-4 border-b">
                 <div>
                   <h3 className="text-lg font-semibold">{activeLesson.title}</h3>
-                  <p className="text-sm text-gray-500">Edit lesson — quick inline editor (LinkedIn-style controls).</p>
+                  <p className="text-sm text-gray-500">Edit lesson — quick inline editor.</p>
                 </div>
                 <button onClick={() => setLessonEditorOpen(false)} className="text-gray-500">✕</button>
               </div>

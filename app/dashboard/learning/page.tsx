@@ -7,7 +7,6 @@ import HeaderLoggedIn from '@/components/HeaderLoggedIn';
 import api from '@/lib/api';
 import {
   AcademicCapIcon,
-  CurrencyDollarIcon,
   PlayIcon,
   BookmarkIcon,
   ChevronRightIcon,
@@ -34,7 +33,7 @@ interface Course {
   thumbnail?: string | null;
   price?: number | null;
   enrolled?: boolean;
-  modules?: Module[];
+  modules_count?: number; // <-- use this for module count
   instructor?: {
     id?: number;
     name?: string;
@@ -58,7 +57,7 @@ export default function LearningIndexPage() {
     try {
       setLoading(true);
       setError('');
-      const res = await api.get('/learning'); // fetch from backend
+      const res = await api.get('/learning'); 
       const data = res.data;
       const list: Course[] = Array.isArray(data) ? data : data.courses || [];
       const published = list.filter((c) => {
@@ -77,7 +76,6 @@ export default function LearningIndexPage() {
 
   useEffect(() => {
     fetchCourses();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const selectCourse = (c: Course) => {
@@ -94,7 +92,7 @@ export default function LearningIndexPage() {
     try {
       setCheckoutLoadingId(c.id);
       setProcessing(true);
-      const res = await fetch('/api/create-checkout-session', {
+      const res = await fetch('/api/paystack/initiate-payment', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -103,15 +101,15 @@ export default function LearningIndexPage() {
           price: c.price || 0,
         }),
       });
-      const data = await res.json().catch(() => ({}));
-      if (data?.url) {
-        window.location.href = data.url;
+      const data = await res.json();
+      if (data?.authorization_url) {
+        window.location.href = data.authorization_url;
       } else {
-        setError(data?.message || 'Failed to start checkout. Try again later.');
+        setError(data?.message || 'Failed to start payment. Try again later.');
       }
     } catch (err) {
-      console.error('checkout', err);
-      setError('Checkout failed. Please try again.');
+      console.error('paystack checkout', err);
+      setError('Payment failed. Please try again.');
     } finally {
       setProcessing(false);
       setCheckoutLoadingId(null);
@@ -175,7 +173,7 @@ export default function LearningIndexPage() {
 
             {loading ? (
               <div className="p-8 bg-white rounded shadow-md text-center">
-                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mx-auto" />
+                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#0A66C2] mx-auto" />
                 <p className="mt-4 text-gray-600">Loading published courses...</p>
               </div>
             ) : error ? (
@@ -193,143 +191,120 @@ export default function LearningIndexPage() {
                 <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
                   {filteredCourses.map((c) => (
                     <article
-                    key={c.id}
-                    className="bg-white rounded-lg shadow-sm border hover:shadow-md transition overflow-hidden flex flex-col"
+                      key={c.id}
+                      className="bg-white rounded-lg shadow-sm border hover:shadow-md transition overflow-hidden flex flex-col"
                     >
-                    {/* Thumbnail */}
-                    <div className="relative h-44 w-full bg-gray-100">
+                      {/* Thumbnail */}
+                      <div className="relative h-44 w-full bg-gray-100">
                         <img
-                        src={
-                            c.thumbnail && c.thumbnail.trim() !== ''
-                            ? c.thumbnail
-                            : '/cover_photo.jpg'
-                        }
-                        alt={c.title}
-                        className="w-full h-full object-cover"
+                          src={c.thumbnail && c.thumbnail.trim() !== '' ? c.thumbnail : '/cover_photo.jpg'}
+                          alt={c.title}
+                          className="w-full h-full object-cover"
                         />
                         <div className="absolute left-3 bottom-3 bg-white/90 text-xs text-gray-700 rounded-full px-2 py-1 flex items-center gap-2 shadow-sm">
-                        <AcademicCapIcon className="w-4 h-4 text-blue-600" />
-                        <span>
-                            {c.modules?.length ?? 0} module
-                            {(c.modules?.length ?? 0) === 1 ? '' : 's'}
-                        </span>
+                          <AcademicCapIcon className="w-4 h-4 text-[#0A66C2]" />
+                          <span>
+                            {typeof c.modules_count === 'number'
+                              ? `${c.modules_count} module${c.modules_count === 1 ? '' : 's'}`
+                              : '0 modules'}
+                          </span>
                         </div>
-                    </div>
+                      </div>
 
-                    {/* Content */}
-                    <div className="p-4 flex-1 flex flex-col">
-                        <h3 className="text-lg font-medium text-gray-900 line-clamp-2">
-                        {c.title}
-                        </h3>
+                      {/* Content */}
+                      <div className="p-4 flex-1 flex flex-col">
+                        <h3 className="text-lg font-medium text-gray-900 line-clamp-2">{c.title}</h3>
                         <p className="text-sm text-gray-600 mt-2 line-clamp-3">{c.description}</p>
 
                         {/* Instructor + Price */}
                         <div className="mt-4 flex items-center justify-between text-sm text-gray-500">
-                        <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-3">
                             <img
-                            src={
-                                c.instructor?.avatar && c.instructor?.avatar.trim() !== ''
-                                ? c.instructor.avatar
-                                : '/avatar.png'
-                            }
-                            alt={c.instructor?.name || 'Instructor'}
-                            className="w-8 h-8 rounded-full object-cover"
+                              src={c.instructor?.avatar && c.instructor?.avatar.trim() !== '' ? c.instructor.avatar : '/avatar.png'}
+                              alt={c.instructor?.name || 'Instructor'}
+                              className="w-8 h-8 rounded-full object-cover"
                             />
                             <div>
-                            <div className="text-xs text-gray-800">
-                                {c.instructor?.name || 'iDriva'}
+                              <div className="text-xs text-gray-800">{c.instructor?.name || 'iDriva'}</div>
+                              <div className="text-xs text-gray-500">
+                                {c.created_at ? new Date(c.created_at).toLocaleDateString() : ''}
+                              </div>
                             </div>
-                            <div className="text-xs text-gray-500">
-                                {c.created_at
-                                ? new Date(c.created_at).toLocaleDateString()
-                                : ''}
-                            </div>
-                            </div>
-                        </div>
+                          </div>
 
-                        <div className="text-right">
+                          <div className="text-right">
                             <div className="text-sm font-semibold text-gray-900 flex items-center gap-1">
-                            <CurrencyDollarIcon className="w-4 h-4 text-gray-500" />
-                            <span>
-                                {typeof c.price === 'number' && c.price > 0
-                                ? `$${c.price.toFixed(2)}`
-                                : 'Free'}
-                            </span>
+                              <span>
+                                {Number(c.price) && Number(c.price) > 0
+                                  ? `₦${Number(c.price).toLocaleString()}`
+                                  : 'Free'}
+                              </span>
                             </div>
-                        </div>
+                          </div>
                         </div>
 
                         {/* Actions */}
                         <div className="mt-4 flex items-center justify-between gap-3">
-                        <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2">
                             {c.enrolled ? (
-                            <button
+                              <button
                                 onClick={() => startCourse(c)}
                                 className="inline-flex items-center gap-2 px-3 py-2 bg-[#0A66C2] hover:bg-[#004182] text-white rounded-md text-sm"
-                            >
+                              >
                                 <PlayIcon className="w-4 h-4" />
                                 Continue
-                            </button>
+                              </button>
                             ) : (
-                            <button
+                              <button
                                 onClick={() => handleBuy(c)}
                                 disabled={processing && checkoutLoadingId === c.id}
-                                className="inline-flex items-center gap-2 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-sm disabled:opacity-60"
-                            >
+                                className="inline-flex items-center gap-2 px-3 py-2 bg-[#0A66C2] hover:bg-[#004182] text-white rounded-md text-sm disabled:opacity-60"
+                              >
                                 {processing && checkoutLoadingId === c.id ? (
-                                <span className="inline-flex items-center gap-2">
+                                  <span className="inline-flex items-center gap-2">
                                     <ArrowPathIcon className="w-4 h-4 animate-spin" />
                                     Processing
-                                </span>
+                                  </span>
                                 ) : (
-                                <>
-                                    <CurrencyDollarIcon className="w-4 h-4" />
-                                    <span>{c.price && c.price > 0 ? 'Buy' : 'Enroll'}</span>
-                                </>
+                                  <span>{c.price && c.price > 0 ? 'Buy' : 'Enroll'}</span>
                                 )}
-                            </button>
+                              </button>
                             )}
-                        </div>
+                          </div>
 
-                        <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2">
                             <button
-                            onClick={() => selectCourse(c)}
-                            className="text-sm text-gray-700 hover:text-gray-900 flex items-center gap-2"
+                              onClick={() => selectCourse(c)}
+                              className="text-sm text-gray-700 hover:text-gray-900 flex items-center gap-2"
                             >
-                            Enroll
-                            <ChevronRightIcon className="w-4 h-4 text-gray-400" />
+                              Enroll
+                              <ChevronRightIcon className="w-4 h-4 text-gray-400" />
                             </button>
 
                             <button
-                            onClick={() =>
-                                navigator.clipboard?.writeText(
-                                `${location.origin}/dashboard/learning/${c.id}`
-                                )
-                            }
-                            className="text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1"
-                            title="Copy link"
+                              onClick={() =>
+                                navigator.clipboard?.writeText(`${location.origin}/dashboard/learning/${c.id}`)
+                              }
+                              className="text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1"
+                              title="Copy link"
                             >
-                            <BookmarkIcon className="w-4 h-4" />
+                              <BookmarkIcon className="w-4 h-4" />
                             </button>
-                        </div>
+                          </div>
                         </div>
 
                         {/* Tags */}
                         {c.tags?.length ? (
-                        <div className="mt-3 flex flex-wrap gap-2">
+                          <div className="mt-3 flex flex-wrap gap-2">
                             {c.tags.slice(0, 4).map((t) => (
-                            <span
-                                key={t}
-                                className="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded-full"
-                            >
+                              <span key={t} className="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded-full">
                                 {t}
-                            </span>
+                              </span>
                             ))}
-                        </div>
+                          </div>
                         ) : null}
-                    </div>
+                      </div>
                     </article>
-
                   ))}
                 </div>
 

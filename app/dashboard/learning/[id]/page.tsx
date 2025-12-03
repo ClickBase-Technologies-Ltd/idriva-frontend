@@ -5,8 +5,8 @@ import api from '@/lib/api';
 import Sidebar from '@/components/Sidebar';
 import RightbarRecruiters from '@/components/Rightbar';
 import HeaderLoggedIn from '@/components/HeaderLoggedIn';
-import Footer from '@/components/Footer'; // assuming you have a footer component
-import { PlayIcon } from '@heroicons/react/24/outline';
+import Footer from '@/components/Footer';
+import { PlayIcon, ChevronDownIcon, ChevronUpIcon } from '@heroicons/react/24/outline';
 
 interface Lesson {
   id: number;
@@ -35,6 +35,7 @@ export default function CourseDetailPage() {
   const router = useRouter();
   const [course, setCourse] = useState<Course | null>(null);
   const [loading, setLoading] = useState(true);
+  const [expandedModules, setExpandedModules] = useState<number[]>([]);
 
   useEffect(() => {
     const fetchCourse = async () => {
@@ -49,6 +50,12 @@ export default function CourseDetailPage() {
     };
     fetchCourse();
   }, [id]);
+
+  const toggleModule = (moduleId: number) => {
+    setExpandedModules((prev) =>
+      prev.includes(moduleId) ? prev.filter((id) => id !== moduleId) : [...prev, moduleId]
+    );
+  };
 
   const startCourse = () => {
     const lessonId = course?.modules?.[0]?.lessons?.[0]?.id || 1;
@@ -68,43 +75,71 @@ export default function CourseDetailPage() {
           {/* Main Content */}
           <main className="flex-1 py-8">
             {loading ? (
-              <p>Loading course...</p>
+              <div className="p-8 bg-white rounded shadow text-center">Loading course...</div>
             ) : !course ? (
-              <p>Course not found.</p>
+              <div className="p-8 bg-white rounded shadow text-center">Course not found.</div>
             ) : (
               <div className="bg-white rounded-lg shadow-sm p-6">
-                <h1 className="text-3xl font-bold text-[#0A66C2]">{course.title}</h1>
-                <p className="mt-2 text-gray-600">{course.description}</p>
-
-                <img
-                  src={course.thumbnail || '/cover_photo.jpg'}
-                  alt={course.title}
-                  className="w-full h-64 object-cover rounded mt-4"
-                />
-
-                <div className="mt-6">
-                  <h2 className="text-xl font-semibold">Modules</h2>
-                  {course.modules?.map((m) => (
-                    <div key={m.id} className="mt-4">
-                      <h3 className="font-medium">{m.title}</h3>
-                      <ul className="ml-4 list-disc">
-                        {m.lessons?.map((l) => (
-                          <li key={l.id}>
-                            {l.title} {l.duration && `(${l.duration})`}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  ))}
+                {/* Header */}
+                <div className="flex flex-col lg:flex-row gap-6 items-start lg:items-center">
+                  <div className="flex-1">
+                    <h1 className="text-3xl font-bold text-[#0A66C2]">{course.title}</h1>
+                    <p className="mt-2 text-gray-600">{course.description}</p>
+                  </div>
+                  {course.thumbnail && (
+                    <img
+                      src={course.thumbnail || '/cover_photo.jpg'}
+                      alt={course.title}
+                      className="w-full lg:w-64 h-40 object-cover rounded"
+                    />
+                  )}
                 </div>
 
-                <button
-                  onClick={startCourse}
-                  className="mt-6 inline-flex items-center gap-2 px-4 py-2 bg-[#0A66C2] text-white rounded hover:bg-[#004182]"
-                >
-                  <PlayIcon className="w-5 h-5" />
-                  {course.enrolled ? 'Start Course' : 'Enroll & Start'}
-                </button>
+                {/* Modules */}
+                <div className="mt-8">
+                  <h2 className="text-2xl font-semibold text-gray-800 mb-4">Course Modules</h2>
+                  <div className="space-y-4">
+                    {course.modules?.map((m) => {
+                      const expanded = expandedModules.includes(m.id);
+                      return (
+                        <div key={m.id} className="border rounded-md bg-gray-50">
+                          <button
+                            onClick={() => toggleModule(m.id)}
+                            className="w-full px-4 py-3 flex justify-between items-center font-medium text-gray-800 hover:bg-gray-100 rounded-t-md"
+                          >
+                            <span>{m.title}</span>
+                            {expanded ? (
+                              <ChevronUpIcon className="w-5 h-5 text-gray-500" />
+                            ) : (
+                              <ChevronDownIcon className="w-5 h-5 text-gray-500" />
+                            )}
+                          </button>
+                          {expanded && (
+                            <ul className="px-6 py-3 space-y-2">
+                              {m.lessons?.map((l) => (
+                                <li key={l.id} className="flex justify-between text-gray-700">
+                                  <span>{l.title}</span>
+                                  {l.duration && <span className="text-sm text-gray-500">{l.duration}</span>}
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* CTA */}
+                <div className="mt-6">
+                  <button
+                    onClick={startCourse}
+                    className="inline-flex items-center gap-2 px-6 py-3 bg-[#0A66C2] text-white font-medium rounded hover:bg-[#004182]"
+                  >
+                    <PlayIcon className="w-5 h-5" />
+                    {course.enrolled ? 'Continue Course' : 'Enroll & Start'}
+                  </button>
+                </div>
               </div>
             )}
           </main>

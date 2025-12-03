@@ -183,6 +183,7 @@ export default function Sidebar() {
       { href: '/dashboard/profile', icon: faUser, label: 'Profile' },
       { href: '/followers?type=following', icon: faUsers, label: 'Following' },
       { href: '/followers?type=followers', icon: faUserCheck, label: 'Followers' },
+      { href: '/dashboard/learning', icon: faBook, label: 'Learning' },
       { href: '/certifications', icon: faAward, label: 'Certifications' },
       { href: '/jobs', icon: faBriefcase, label: 'Job Board' },
       { href: '#', icon: faComments, label: 'Messages', isMessage: true },
@@ -202,7 +203,7 @@ export default function Sidebar() {
       { href: '/settings', icon: faCog, label: 'Settings' },
     ],
   Instructor: [
-      { href: '/instructor/dashboard', icon: faTachometerAlt, label: 'Dashboard' },
+      { href: '/instructor/dashboard', icon: faTachometerAlt, label: 'Learning Dashboard' },
       { href: '/instructor/my-courses', icon: faBook, label: 'My Courses' },
       { href: '/instructor/courses/create', icon: faPlus, label: 'Create Course' },
       { href: '/instructor/modules/create', icon: faFileAlt, label: 'Create Module' },

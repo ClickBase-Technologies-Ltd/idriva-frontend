@@ -7,7 +7,9 @@ const nextConfig = {
   },
 
   webpack(config) {
-    const fileLoaderRule = config.module.rules.find((rule) => rule.test?.test?.('.svg'));
+    const fileLoaderRule = config.module.rules.find((rule) =>
+      rule.test?.test?.('.svg')
+    );
 
     config.module.rules.push(
       {
@@ -29,12 +31,21 @@ const nextConfig = {
     return config;
   },
 
-  output: 'export',
+  // ❌ Remove this: output: 'export'
+  // It breaks dynamic routes without generateStaticParams()
+
+  // Instead use standalone:
+  output: 'standalone',
+
   trailingSlash: true,
+
   typescript: {
     ignoreBuildErrors: true,
   },
-  images: { unoptimized: true },
+
+  images: {
+    unoptimized: true,
+  },
 };
 
 module.exports = nextConfig;
