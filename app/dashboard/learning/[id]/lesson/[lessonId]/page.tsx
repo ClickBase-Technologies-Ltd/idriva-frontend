@@ -225,7 +225,7 @@ export default function LessonPage() {
           </aside>
 
           {/* Main content */}
-          <main className="flex-1 py-8">
+          <main className="flex-1 py-8 mb-16">
             {loading ? (
               <div className="p-6 bg-white rounded-lg shadow-sm">
                 <p>Loading lesson...</p>
@@ -241,7 +241,7 @@ export default function LessonPage() {
               </div>
             ) : (
               <>
-                <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+                <div className="bg-white rounded-lg shadow-sm p-6 mb-2">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1">
                       <h1 className="text-3xl font-bold text-[#0A66C2]">{lesson.title}</h1>
