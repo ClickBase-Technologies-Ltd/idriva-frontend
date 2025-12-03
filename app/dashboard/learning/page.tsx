@@ -9,7 +9,6 @@ import {
   AcademicCapIcon,
   PlayIcon,
   BookmarkIcon,
-  ChevronRightIcon,
   UserGroupIcon,
   ArrowPathIcon,
 } from '@heroicons/react/24/outline';
@@ -33,7 +32,7 @@ interface Course {
   thumbnail?: string | null;
   price?: number | null;
   enrolled?: boolean;
-  modules_count?: number; // <-- use this for module count
+  modules_count?: number;
   instructor?: {
     id?: number;
     name?: string;
@@ -42,6 +41,7 @@ interface Course {
   published?: boolean | number | string;
   tags?: string[];
   created_at?: string | null;
+  modules?: Module[];
 }
 
 export default function LearningIndexPage() {
@@ -49,22 +49,29 @@ export default function LearningIndexPage() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [processing, setProcessing] = useState(false);
-  const [checkoutLoadingId, setCheckoutLoadingId] = useState<number | null>(null);
   const [filter, setFilter] = useState<'all' | 'free' | 'paid'>('all');
 
   const fetchCourses = async () => {
     try {
       setLoading(true);
       setError('');
-      const res = await api.get('/learning'); 
+      const res = await api.get('/learning');
       const data = res.data;
       const list: Course[] = Array.isArray(data) ? data : data.courses || [];
+
+      // Filter published courses
       const published = list.filter((c) => {
         const p = c?.published;
         return p === true || p === 1 || p === '1' || p === 'true';
       });
-      setCourses(published);
+
+      // Ensure enrolled is boolean
+      const normalized = published.map((c) => ({
+        ...c,
+        enrolled: Boolean(c.enrolled),
+      }));
+
+      setCourses(normalized);
     } catch (e) {
       console.error('Failed to load courses', e);
       setError('Failed to load courses. Please try again.');
@@ -86,34 +93,6 @@ export default function LearningIndexPage() {
   const startCourse = (c: Course) => {
     const lessonId = c.modules?.[0]?.lessons?.[0]?.id || 1;
     router.push(`/dashboard/learning/${c.id}/lesson/${lessonId}`);
-  };
-
-  const handleBuy = async (c: Course) => {
-    try {
-      setCheckoutLoadingId(c.id);
-      setProcessing(true);
-      const res = await fetch('/api/paystack/initiate-payment', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          courseId: c.id,
-          courseTitle: c.title,
-          price: c.price || 0,
-        }),
-      });
-      const data = await res.json();
-      if (data?.authorization_url) {
-        window.location.href = data.authorization_url;
-      } else {
-        setError(data?.message || 'Failed to start payment. Try again later.');
-      }
-    } catch (err) {
-      console.error('paystack checkout', err);
-      setError('Payment failed. Please try again.');
-    } finally {
-      setProcessing(false);
-      setCheckoutLoadingId(null);
-    }
   };
 
   const filteredCourses = courses.filter((c) => {
@@ -244,65 +223,47 @@ export default function LearningIndexPage() {
                         </div>
 
                         {/* Actions */}
-                        <div className="mt-4 flex items-center justify-between gap-3">
-                          <div className="flex items-center gap-2">
-                            {c.enrolled ? (
-                              <button
-                                onClick={() => startCourse(c)}
-                                className="inline-flex items-center gap-2 px-3 py-2 bg-[#0A66C2] hover:bg-[#004182] text-white rounded-md text-sm"
-                              >
-                                <PlayIcon className="w-4 h-4" />
-                                Continue
-                              </button>
-                            ) : (
-                              <button
-                                onClick={() => handleBuy(c)}
-                                disabled={processing && checkoutLoadingId === c.id}
-                                className="inline-flex items-center gap-2 px-3 py-2 bg-[#0A66C2] hover:bg-[#004182] text-white rounded-md text-sm disabled:opacity-60"
-                              >
-                                {processing && checkoutLoadingId === c.id ? (
-                                  <span className="inline-flex items-center gap-2">
-                                    <ArrowPathIcon className="w-4 h-4 animate-spin" />
-                                    Processing
-                                  </span>
-                                ) : (
-                                  <span>{c.price && c.price > 0 ? 'Buy' : 'Enroll'}</span>
-                                )}
-                              </button>
-                            )}
-                          </div>
-
-                          <div className="flex items-center gap-2">
+                        <div className="mt-4">
+                          {c.enrolled ? (
+                            <button
+                              onClick={() => startCourse(c)}
+                              className="w-full inline-flex justify-center items-center gap-2 px-4 py-2 bg-[#0A66C2] hover:bg-[#004182] text-white rounded-md text-sm"
+                            >
+                              <PlayIcon className="w-4 h-4" />
+                              Continue Learning
+                            </button>
+                          ) : (
                             <button
                               onClick={() => selectCourse(c)}
-                              className="text-sm text-gray-700 hover:text-gray-900 flex items-center gap-2"
+                              className="w-full inline-flex justify-center items-center gap-2 px-4 py-2 bg-[#0A66C2] hover:bg-[#004182] text-white rounded-md text-sm"
                             >
                               Enroll
-                              <ChevronRightIcon className="w-4 h-4 text-gray-400" />
                             </button>
-
-                            <button
-                              onClick={() =>
-                                navigator.clipboard?.writeText(`${location.origin}/dashboard/learning/${c.id}`)
-                              }
-                              className="text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1"
-                              title="Copy link"
-                            >
-                              <BookmarkIcon className="w-4 h-4" />
-                            </button>
-                          </div>
+                          )}
                         </div>
 
-                        {/* Tags */}
-                        {c.tags?.length ? (
-                          <div className="mt-3 flex flex-wrap gap-2">
-                            {c.tags.slice(0, 4).map((t) => (
-                              <span key={t} className="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded-full">
-                                {t}
-                              </span>
-                            ))}
-                          </div>
-                        ) : null}
+                        {/* Copy link + tags */}
+                        <div className="mt-3 flex items-center justify-between">
+                          <button
+                            onClick={() =>
+                              navigator.clipboard?.writeText(`${location.origin}/dashboard/learning/${c.id}`)
+                            }
+                            className="text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1"
+                            title="Copy link"
+                          >
+                            <BookmarkIcon className="w-4 h-4" />
+                          </button>
+
+                          {c.tags?.length ? (
+                            <div className="flex flex-wrap gap-2">
+                              {c.tags.slice(0, 4).map((t) => (
+                                <span key={t} className="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded-full">
+                                  {t}
+                                </span>
+                              ))}
+                            </div>
+                          ) : null}
+                        </div>
                       </div>
                     </article>
                   ))}
