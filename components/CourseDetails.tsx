@@ -36,6 +36,7 @@ export default function CourseDetailPage() {
   const { id } = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const courseId = searchParams.get("courseId");
 
   const [course, setCourse] = useState<Course | null>(null);
   const [loading, setLoading] = useState(true);
@@ -49,7 +50,7 @@ export default function CourseDetailPage() {
     const fetchCourse = async () => {
       setLoading(true);
       try {
-        const res = await api.get(`/learning/${id}`);
+        const res = await api.get(`/learning/${courseId}`);
         setCourse(res.data);
       } catch (err) {
         console.error(err);
@@ -71,7 +72,7 @@ export default function CourseDetailPage() {
       setStatus('loading');
       setMessage('Verifying your payment, please wait...');
       try {
-        const res = await api.get(`/learning/${id}/payment-verify`, {
+        const res = await api.get(`/learning/${courseId}/payment-verify`, {
           params: { reference },
         });
 
@@ -86,9 +87,9 @@ export default function CourseDetailPage() {
           const firstLessonId = course?.modules?.find((m) => m.lessons?.length)?.lessons?.[0]?.id;
           setTimeout(() => {
             if (firstLessonId) {
-              router.replace(`/dashboard/learning/${id}/lesson/${firstLessonId}`);
+              router.replace(`/dashboard/learning/lesson?courseId=${courseId}&lessonId=${firstLessonId}`);
             } else {
-              router.replace(`/dashboard/learning/${id}`);
+              router.replace(`/dashboard/learning?courseId=${courseId}`);
             }
           }, 2500); // show success message for 2.5s
         } else {
@@ -109,9 +110,9 @@ export default function CourseDetailPage() {
     if (!course) return;
     const firstLessonId = course.modules?.find((m) => m.lessons?.length)?.lessons?.[0]?.id;
     if (firstLessonId) {
-      router.replace(`/dashboard/learning/${id}/lesson/${firstLessonId}`);
+      router.replace(`/dashboard/learning/${courseId}/lesson/${firstLessonId}`);
     } else {
-      router.replace(`/dashboard/learning/${id}`);
+      router.replace(`/dashboard/learning/${courseId}`);
     }
   };
 

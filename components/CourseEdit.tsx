@@ -1,14 +1,16 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import HeaderLoggedIn from '@/components/HeaderLoggedIn';
 import Sidebar from '@/components/Sidebar';
 import RightbarRecruiters from '@/components/Rightbar';
 
 export default function CourseEditPage() {
-  const { id } = useParams() as { id: string };
+  // const { id } = useParams() as { id: string };
   const router = useRouter();
   const API = (process.env.NEXT_PUBLIC_API_URL ?? '').replace(/\/$/, '');
+ const searchParams = useSearchParams();
+   const id = searchParams.get("courseId");
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);

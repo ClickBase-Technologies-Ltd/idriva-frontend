@@ -194,7 +194,7 @@ export default function CourseManagePage() {
                       </div>
 
                       <div className="flex gap-2">
-                        <button onClick={() => router.push(`/instructor/courses/${id}/edit`)} className="px-3 py-2 border rounded">Edit</button>
+                        <button onClick={() => router.push(`/instructor/courses/edit?courseId=${id}`)} className="px-3 py-2 border rounded">Edit</button>
                         <button
                           onClick={() => router.push(`/instructor/modules/create?course_id=${encodeURIComponent(id)}`)}
                           className="px-3 py-2 border rounded"

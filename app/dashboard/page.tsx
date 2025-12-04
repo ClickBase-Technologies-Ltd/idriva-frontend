@@ -7,6 +7,8 @@ import FeedJob from "@/components/FeedJob";
 import CreatePostBox from "@/components/CreatePostBox";
 import HeaderLoggedIn from "@/components/HeaderLoggedIn";
 import api from '@/lib/api';
+import ChatComponent from "@/components/ChatComponent";
+import ChatButton from "@/components/ChatButton";
 
 interface User {
   id: string;
@@ -152,6 +154,7 @@ export default function FeedPage() {
   const feedContainerRef = useRef<HTMLDivElement>(null);
   const lastPostIdRef = useRef<number>(0);
   const lastJobIdRef = useRef<number>(0);
+  
 
   // Fetch user data and posts
   useEffect(() => {
@@ -588,10 +591,43 @@ export default function FeedPage() {
     }
   };
 
+
+  // Add these states with your existing useState declarations
+const [isChatOpen, setIsChatOpen] = useState(false);
+const [selectedChatUser, setSelectedChatUser] = useState<ChatUser | null>(null);
+const [unreadMessages, setUnreadMessages] = useState(0);
+
+// Add this useEffect to check for unread messages
+useEffect(() => {
+  const checkUnreadMessages = async () => {
+    try {
+      const response = await api.get('/chat/unread-count');
+      if (response.status === 200) {
+        setUnreadMessages(response.data.count || 0);
+      }
+    } catch (error) {
+      console.error('Error checking unread messages:', error);
+    }
+  };
+
+  // Check every 30 seconds
+  checkUnreadMessages();
+  const interval = setInterval(checkUnreadMessages, 30000);
+
+  return () => clearInterval(interval);
+}, []);
+
+const handleOpenChat = (userId?: string, userData?: ChatUser) => {
+  if (userId && userData) {
+    setSelectedChatUser(userData);
+  }
+  setIsChatOpen(true);
+};
   if (loading) {
     return (
       <>
         <HeaderLoggedIn />
+       
         <div className="bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-white pt-16">
           <div className="max-w-[1360px] mx-auto px-4 lg:px-6 flex gap-6 mt-[-70px] min-h-screen">
             <div className="flex-1 flex items-center justify-center">
@@ -609,6 +645,25 @@ export default function FeedPage() {
   return (
     <>
       <HeaderLoggedIn />
+       {/* Chat Components */}
+{!isChatOpen && (
+  <ChatButton 
+    onClick={() => setIsChatOpen(true)} 
+    unreadCount={unreadMessages}
+  />
+)}
+
+{isChatOpen && (
+  <ChatComponent
+    currentUser={user}
+    isOpen={isChatOpen}
+    onClose={() => {
+      setIsChatOpen(false);
+      setSelectedChatUser(null);
+    }}
+    initialReceiver={selectedChatUser}
+  />
+)}
       <div className="bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-white pt-16">
         <div className="max-w-[1360px] mx-auto px-4 lg:px-6 flex gap-6 mt-[-70px]">
           {/* LEFT SIDEBAR */}

@@ -1,12 +1,12 @@
 "use client";
 
 import { Suspense } from "react";
-import CreateModulePage from "@/components/Modules";
+import PaymentVerifyPage from "@/components/PaymentVerify";
 
 export default function Page() {
   return (
     <Suspense>
-      <CreateModulePage />
+      <PaymentVerifyPage />
     </Suspense>
   );
 }

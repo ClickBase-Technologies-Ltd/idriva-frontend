@@ -28,6 +28,8 @@ import {
   faPlus
 } from '@fortawesome/free-solid-svg-icons';
 import api from '@/lib/api';
+import UserFollowStats from './UserFollowStats';
+import FollowButton from './FollowButton';
 
 interface User {
   id: string;
@@ -62,26 +64,6 @@ export default function Sidebar() {
       try {
         setLoading(true);
         
-        // First try to get from localStorage (from login)
-        // const storedUser = localStorage.getItem('user');
-        // if (storedUser) {
-        //   console.log('Found user in localStorage:', storedUser);
-        //   const userData = JSON.parse(storedUser);
-        //   setUser({
-        //     id: userData.id || '1',
-        //     firstName: userData.firstName || 'First',
-        //     lastName: userData.lastName || 'Last',
-        //     role: userData.role || 'Driver',
-        //     email: userData.email,
-        //     phoneNumber: userData.phoneNumber,
-        //     profileImage: userData.profileImage,
-        //     coverImage: userData.coverImage
-        //   });
-        //   setLoading(false);
-        //   return;
-        // }
-
-        // If no localStorage, try API endpoint
         const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/user`, {
           credentials: 'include'
         });
@@ -199,8 +181,8 @@ export default function Sidebar() {
       { href: '/followers?type=followers', icon: faUserCheck, label: 'Followers' },
       { href: '/dashboard/learning', icon: faBook, label: 'Learning' },
       { href: '/certifications', icon: faAward, label: 'Certifications' },
-      { href: '/jobs', icon: faBriefcase, label: 'Job Board' },
-      { href: '#', icon: faComments, label: 'Messages', isMessage: true },
+      { href: '/dashboard/driver/jobs', icon: faBriefcase, label: 'Job Board' },
+    //   { href: '#', icon: faComments, label: 'Messages', isMessage: true },
       { href: '/notifications', icon: faBell, label: 'Notifications' },
       { href: '/settings', icon: faCog, label: 'Settings' },
       { href: '/help', icon: faQuestionCircle, label: 'Help Center' },
@@ -212,7 +194,7 @@ export default function Sidebar() {
       { href: '/dashboard/recruiter/candidates', icon: faUserTie, label: 'Candidates' },
       { href: '/dashboard/recruiter/jobs', icon: faBriefcase, label: 'Job Posts' },
       { href: '/dashboard/recruiter/applications', icon: faFileAlt, label: 'Applications' },
-      { href: '#', icon: faComments, label: 'Messages', isMessage: true },
+    //   { href: '#', icon: faComments, label: 'Messages', isMessage: true },
       { href: '/notifications', icon: faBell, label: 'Notifications' },
       { href: '/settings', icon: faCog, label: 'Settings' },
     ],
@@ -341,8 +323,8 @@ export default function Sidebar() {
      <div className="absolute left-4 -bottom-6">
   <Image
     src={
-      currentUser?.profileImage
-        ? `${process.env.NEXT_PUBLIC_FILE_URL}/${currentUser.profileImage}`
+      currentUser?.profileImage && currentUser.profileImage.trim() !== 'NULL'
+        ? `${process.env.NEXT_PUBLIC_FILE_URL}/${currentUser.profileImage} ?? '/avatar.png'`
         : '/avatar.png'
     }
     alt="Profile Picture"
@@ -371,22 +353,12 @@ export default function Sidebar() {
 
           {/* Follower/Following Stats */}
           {(currentUser.role === 'Driver' || currentUser.role === 'Recruiter') && (
-            <div className="flex space-x-4 text-xs text-gray-600 dark:text-gray-400 mt-3">
-              <Link 
-                href="/followers?type=followers" 
-                className="text-center hover:text-[#0A66C2] transition-colors"
-              >
-                <div className="font-semibold text-gray-800 dark:text-white">42</div>
-                <div>Followers</div>
-              </Link>
-              <Link 
-                href="/followers?type=following" 
-                className="text-center hover:text-[#0A66C2] transition-colors"
-              >
-                <div className="font-semibold text-gray-800 dark:text-white">128</div>
-                <div>Following</div>
-              </Link>
-            </div>
+            <UserFollowStats
+  userId={user.id}
+  followersCount={user.followersCount}
+  followingCount={user.followingCount}
+  isCurrentUser={user.id === currentUser.id}
+/>
           )}
         </div>
 
@@ -429,40 +401,51 @@ export default function Sidebar() {
           </Link> */}
          {/* People You May Know - Instructor version */}
         {(currentUser.role === 'Driver' || currentUser.role === 'Recruiter' ) && mockSuggestedUsers.length > 0 && (
-          <div className="mt-6 px-6 pb-6">
-            <div className="bg-white dark:bg-gray-800">
-              <h3 className="font-semibold mb-3">People You May Know</h3>
-              <div className="space-y-3">
-                {mockSuggestedUsers.map((person) => (
-                  <div key={person.id} className="flex items-center space-x-2">
-                    <Image
-                      src={person.profileImage || '/avatar.png'}
-                      alt={person.full_name}
-                      width={32}
-                      height={32}
-                      className="w-8 h-8 rounded-full object-cover"
-                    />
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-gray-800 dark:text-white">
-                        {person.full_name}
-                      </p>
-                      <button 
-                        onClick={() => handleFollow(person.id)}
-                        className={`text-xs mt-1 ${
-                          person.is_following 
-                            ? 'text-gray-500' 
-                            : 'text-[#0A66C2] hover:underline'
-                        }`}
-                        disabled={person.is_following}
-                      >
-                        {person.is_following ? 'Following' : 'Follow'}
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
+        //   <div className="mt-6 px-6 pb-6">
+        //     <div className="bg-white dark:bg-gray-800">
+        //       <h3 className="font-semibold mb-3">People You May Know</h3>
+        //       <div className="space-y-3">
+        //         {mockSuggestedUsers.map((person) => (
+        //           <div key={person.id} className="flex items-center space-x-2">
+        //             <Image
+        //               src={person.profileImage || '/avatar.png'}
+        //               alt={person.full_name}
+        //               width={32}
+        //               height={32}
+        //               className="w-8 h-8 rounded-full object-cover"
+        //             />
+        //             <div className="flex-1">
+        //               <p className="text-sm font-medium text-gray-800 dark:text-white">
+        //                 {person.full_name}
+        //               </p>
+        //               <button 
+        //                 onClick={() => handleFollow(person.id)}
+        //                 className={`text-xs mt-1 ${
+        //                   person.is_following 
+        //                     ? 'text-gray-500' 
+        //                     : 'text-[#0A66C2] hover:underline'
+        //                 }`}
+        //                 disabled={person.is_following}
+        //               >
+        //                 {person.is_following ? 'Following' : 'Follow'}
+        //               </button>
+        //             </div>
+        //           </div>
+        //         ))}
+        //       </div>
+        //     </div>
+        //   </div>
+        <FollowButton
+  targetUserId={user.id}
+  currentUserId={currentUser.id}
+  initialFollowing={user.isFollowing}
+  followerCount={user.followersCount}
+  size="md"
+  showCount={true}
+//   onFollowChange={(isFollowing, newCount) => {
+//     console.log(`Now ${isFollowing ? 'following' : 'not following'}, count: ${newCount}`);
+//   }}
+/>
         )}
         </div>
 

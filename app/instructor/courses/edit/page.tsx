@@ -1,12 +1,12 @@
 "use client";
 
 import { Suspense } from "react";
-import CreateModulePage from "@/components/Modules";
+import CourseEditPage from "@/components/CourseEdit";
 
 export default function Page() {
   return (
     <Suspense>
-      <CreateModulePage />
+      <CourseEditPage />
     </Suspense>
   );
 }

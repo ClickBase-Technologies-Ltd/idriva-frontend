@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import api from '@/lib/api';
 import HeaderLoggedIn from '@/components/HeaderLoggedIn';
@@ -39,11 +39,12 @@ interface CourseWithModules {
 }
 
 export default function LessonPage() {
-  const params = useParams();
-  const router = useRouter();
+ 
 
-  const courseId = params?.id as string;
-  const lessonId = params?.lessonId as string;
+ const router = useRouter();
+  const searchParams = useSearchParams();
+  const courseId = searchParams.get("courseId");
+  const lessonId = searchParams.get("lessonId");
 
   const [course, setCourse] = useState<CourseWithModules | null>(null);
   const [lesson, setLesson] = useState<Lesson | null>(null);
@@ -56,11 +57,11 @@ export default function LessonPage() {
       setLoading(true);
       setError(null);
 
-      if (!courseId || !lessonId) {
-        setError('Missing courseId or lessonId in route params');
-        setLoading(false);
-        return;
-      }
+      // if (!courseId || !lessonId) {
+      //   setError('Missing courseId or lessonId in route params');
+      //   setLoading(false);
+      //   return;
+      // }
 
       try {
         // 1) Fetch course with modules and lessons (ordered by position)

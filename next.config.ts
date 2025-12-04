@@ -35,7 +35,7 @@ const nextConfig = {
   // It breaks dynamic routes without generateStaticParams()
 
   // Instead use standalone:
-  output: 'standalone',
+  output: 'export',
 
   trailingSlash: true,
 

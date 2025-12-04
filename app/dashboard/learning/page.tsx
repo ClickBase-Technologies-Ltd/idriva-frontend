@@ -86,7 +86,8 @@ export default function LearningIndexPage() {
   }, []);
 
   const selectCourse = (c: Course) => {
-    router.push(`/dashboard/learning/${c.id}`);
+    router.push(`/dashboard/learning/enroll?courseId=${c.id}`);
+    // router.push(`/dashboard/learning/${c.id}`);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 

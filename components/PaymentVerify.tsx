@@ -43,7 +43,7 @@ export default function PaymentVerifyPage() {
           // ✅ Always use backend-provided first_lesson_id for redirect
           setTimeout(() => {
             if (res.data?.first_lesson_id) {
-              router.replace(`/dashboard/learning/${id}/lesson/${res.data.first_lesson_id}`);
+              router.replace(`/dashboard/learning/lesson?lessionId=${res.data.first_lesson_id}`);
             } else {
               router.replace(`/dashboard/learning/${id}`);
             }
