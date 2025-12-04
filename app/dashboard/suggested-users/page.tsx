@@ -326,8 +326,8 @@ export default function SuggestedUsersPage() {
             {/* Content */}
             {loading && page === 1 ? (
               <div className="flex justify-center items-center py-12">
-                <FontAwesomeIcon icon={faSpinner} className="animate-spin text-3xl text-[#0A66C2]" />
-                <span className="ml-3 text-gray-600 dark:text-gray-400">Loading suggestions...</span>
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+                {/* <p className="mt-4 text-gray-600 dark:text-gray-400">Loading suggestions...</p> */}
               </div>
             ) : error ? (
               <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-6 text-center">

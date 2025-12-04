@@ -8,6 +8,8 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faArrowLeft, faUsers, faUserCheck, faSearch, faSpinner } from '@fortawesome/free-solid-svg-icons';
 import FollowButton from '@/components/FollowButton';
 import Sidebar from '@/components/Sidebar';
+import HeaderLoggedIn from '@/components/HeaderLoggedIn';
+import RightbarRecruiters from "@/components/Rightbar";
 
 interface FollowerUser {
   id: number;
@@ -63,7 +65,7 @@ export default function FollowersPage() {
       setError('');
       
       const endpoint = type === 'followers' 
-        ? `${process.env.NEXT_PUBLIC_API_URL}/followers`
+        ? `${process.env.NEXT_PUBLIC_API_URL}/suggested-followers`
         : `${process.env.NEXT_PUBLIC_API_URL}/following`;
       
       const response = await fetch(endpoint, {
@@ -124,70 +126,88 @@ export default function FollowersPage() {
     return user.otherNames ? `${mainName} ${user.otherNames}` : mainName;
   };
 
+  if (loading) {
+    return (
+      <>
+        <HeaderLoggedIn />
+        <div className="bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-white pt-16">
+          <div className="max-w-[1360px] mx-auto px-4 lg:px-6 flex gap-6 mt-[-70px] min-h-screen">
+            <div className="flex-1 flex items-center justify-center">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+                <p className="mt-4 text-gray-600 dark:text-gray-400">Loading {type}...</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <div className="flex">
-        <Sidebar />
-        
-        <main className="flex-1 p-4 md:p-6 lg:p-8">
-          <div className="max-w-4xl mx-auto">
+    <>
+      <HeaderLoggedIn />
+      <div className="bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-white pt-16">
+        <div className="max-w-[1360px] mx-auto px-4 lg:px-6 flex gap-6 mt-[-70px]">
+          {/* LEFT SIDEBAR */}
+          <aside className="w-[280px] hidden lg:block sticky top-16 h-[calc(100vh-4rem)] overflow-y-auto scrollbar-hide">
+            <Sidebar />
+          </aside>
+
+          {/* MAIN CONTENT */}
+          <main className="flex-1 space-y-6 mt-6 max-h-[calc(100vh-4rem)] overflow-y-auto scrollbar-hide">
             {/* Header */}
-            <div className="mb-6 md:mb-8">
-              <Link 
-                href="/dashboard" 
-                className="inline-flex items-center text-gray-600 dark:text-gray-400 hover:text-[#0A66C2] mb-4"
-              >
-                <FontAwesomeIcon icon={faArrowLeft} className="mr-2" />
-                Back to Dashboard
-              </Link>
+            <div className="flex justify-between items-center mb-6">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+                  {type === 'followers' ? 'Your Followers' : 'Following'}
+                </h2>
+                <p className="text-gray-600 dark:text-gray-400 mt-1">
+                  {type === 'followers' 
+                    ? 'People who follow you' 
+                    : 'People you follow'}
+                  {users.length > 0 && (
+                    <span className="ml-2 text-[#00639C]">
+                      • {users.length} {type}
+                    </span>
+                  )}
+                </p>
+              </div>
               
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between">
-                <div>
-                  <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-2">
-                    {type === 'followers' ? 'Your Followers' : 'Following'}
-                  </h1>
-                  <p className="text-gray-600 dark:text-gray-400">
-                    {type === 'followers' 
-                      ? 'People who follow you' 
-                      : 'People you follow'}
-                  </p>
-                </div>
+              <div className="flex space-x-2">
+                <Link
+                  href="/dashboard/followers?type=followers"
+                  className={`px-4 py-2 rounded-lg flex items-center ${
+                    type === 'followers'
+                      ? 'bg-[#00639C] text-white'
+                      : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+                  }`}
+                >
+                  <FontAwesomeIcon icon={faUsers} className="mr-2" />
+                  Followers
+                  {type === 'followers' && users.length > 0 && (
+                    <span className="ml-2 bg-white/20 px-2 py-0.5 rounded-full text-xs">
+                      {users.length}
+                    </span>
+                  )}
+                </Link>
                 
-                <div className="mt-4 md:mt-0 flex space-x-3">
-                  <Link
-                    href="/followers?type=followers"
-                    className={`px-4 py-2 rounded-lg flex items-center ${
-                      type === 'followers'
-                        ? 'bg-[#0A66C2] text-white'
-                        : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
-                    }`}
-                  >
-                    <FontAwesomeIcon icon={faUsers} className="mr-2" />
-                    Followers
-                    {type === 'followers' && users.length > 0 && (
-                      <span className="ml-2 bg-white/20 px-2 py-0.5 rounded-full text-xs">
-                        {users.length}
-                      </span>
-                    )}
-                  </Link>
-                  
-                  <Link
-                    href="/followers?type=following"
-                    className={`px-4 py-2 rounded-lg flex items-center ${
-                      type === 'following'
-                        ? 'bg-[#0A66C2] text-white'
-                        : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
-                    }`}
-                  >
-                    <FontAwesomeIcon icon={faUserCheck} className="mr-2" />
-                    Following
-                    {type === 'following' && users.length > 0 && (
-                      <span className="ml-2 bg-white/20 px-2 py-0.5 rounded-full text-xs">
-                        {users.length}
-                      </span>
-                    )}
-                  </Link>
-                </div>
+                <Link
+                  href="/dashboard/followers?type=following"
+                  className={`px-4 py-2 rounded-lg flex items-center ${
+                    type === 'following'
+                      ? 'bg-[#00639C] text-white'
+                      : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+                  }`}
+                >
+                  <FontAwesomeIcon icon={faUserCheck} className="mr-2" />
+                  Following
+                  {type === 'following' && users.length > 0 && (
+                    <span className="ml-2 bg-white/20 px-2 py-0.5 rounded-full text-xs">
+                      {users.length}
+                    </span>
+                  )}
+                </Link>
               </div>
             </div>
 
@@ -200,32 +220,32 @@ export default function FollowersPage() {
                 />
                 <input
                   type="text"
-                  placeholder={`Search ${type}...`}
+                  placeholder={`Search ${type} by name...`}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0A66C2] focus:border-transparent"
+                  className="w-full pl-10 pr-4 py-3 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00639C] focus:border-transparent"
                 />
               </div>
             </div>
 
+            {/* Error Message */}
+            {error && (
+              <div className="bg-red-100 dark:bg-red-900/20 border border-red-300 dark:border-red-700 rounded-lg p-4">
+                <div className="flex items-center">
+                  <div className="text-red-600 dark:text-red-400 font-medium">{error}</div>
+                  <button 
+                    onClick={() => setError('')}
+                    className="ml-auto text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-200"
+                  >
+                    ×
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* Content */}
-            {loading ? (
-              <div className="flex justify-center items-center py-12">
-                <FontAwesomeIcon icon={faSpinner} className="animate-spin text-3xl text-[#0A66C2]" />
-                <span className="ml-3 text-gray-600 dark:text-gray-400">Loading {type}...</span>
-              </div>
-            ) : error ? (
-              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-6 text-center">
-                <p className="text-red-600 dark:text-red-400">{error}</p>
-                <button
-                  onClick={fetchUsers}
-                  className="mt-4 px-4 py-2 bg-[#0A66C2] text-white rounded-lg hover:bg-[#0056b3] transition"
-                >
-                  Try Again
-                </button>
-              </div>
-            ) : filteredUsers.length === 0 ? (
-              <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-8 text-center">
+            {filteredUsers.length === 0 ? (
+              <div className="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 text-center">
                 <FontAwesomeIcon 
                   icon={type === 'followers' ? faUsers : faUserCheck} 
                   className="text-4xl text-gray-300 dark:text-gray-600 mb-4"
@@ -240,8 +260,8 @@ export default function FollowersPage() {
                 </p>
                 {type === 'following' && (
                   <Link
-                    href="/suggested-users"
-                    className="inline-flex items-center px-4 py-2 bg-[#0A66C2] text-white rounded-lg hover:bg-[#0056b3] transition"
+                    href="/dashboard/suggested-users"
+                    className="inline-flex items-center px-4 py-2 bg-[#00639C] text-white rounded-lg hover:bg-[#005080] transition"
                   >
                     <FontAwesomeIcon icon={faUsers} className="mr-2" />
                     Discover People
@@ -249,92 +269,137 @@ export default function FollowersPage() {
                 )}
               </div>
             ) : (
-              <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-                <div className="divide-y divide-gray-200 dark:divide-gray-700">
-                  {filteredUsers.map((user) => (
-                    <div key={user.id} className="p-4 md:p-6 hover:bg-gray-50 dark:hover:bg-gray-750 transition">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-4 flex-1 min-w-0">
-                          <Link href={`/profile/${user.id}`} className="flex-shrink-0">
-                            <Image
-                              src={
-                                user.profileImage
-                                  ? `${process.env.NEXT_PUBLIC_FILE_URL}/${user.profileImage}`
-                                  : '/avatar.png'
-                              }
-                              alt={getFullName(user)}
-                              width={56}
-                              height={56}
-                              className="w-14 h-14 rounded-full object-cover border-2 border-gray-200 dark:border-gray-700"
-                              onError={(e) => {
-                                e.currentTarget.src = '/avatar.png';
-                              }}
-                            />
-                          </Link>
-                          
-                          <div className="min-w-0 flex-1">
-                            <Link 
-                              href={`/profile/${user.id}`}
-                              className="group block"
-                            >
-                              <h3 className="font-semibold text-gray-900 dark:text-white group-hover:text-[#0A66C2] truncate">
-                                {getFullName(user)}
-                              </h3>
-                            </Link>
-                            
-                            {user.location && (
-                              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 truncate">
-                                {user.location}
-                              </p>
-                            )}
-                            
-                            {user.bio && (
-                              <p className="text-sm text-gray-500 dark:text-gray-500 mt-2 line-clamp-2">
-                                {user.bio}
-                              </p>
-                            )}
-                            
-                            <div className="flex items-center space-x-4 mt-2">
-                              <span className="text-xs text-gray-500 dark:text-gray-400">
-                                <span className="font-semibold">{user.followersCount}</span> followers
-                              </span>
-                              <span className="text-xs text-gray-500 dark:text-gray-400">
-                                <span className="font-semibold">{user.followingCount}</span> following
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                        
-                        <div className="ml-4 flex-shrink-0">
-                          {currentUser && user.id.toString() !== currentUser.id && (
-                            <FollowButton
-                              targetUserId={user.id.toString()}
-                              currentUserId={currentUser.id}
-                              initialFollowing={user.is_following || false}
-                              followerCount={user.followersCount}
-                              size="md"
-                              showCount={false}
-                              onFollowChange={(isFollowing) => handleFollowSuccess(user.id.toString(), isFollowing)}
-                            />
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+              <div className="space-y-4">
+                {filteredUsers.map((user) => (
+                  <UserCard
+                    key={user.id}
+                    user={user}
+                    currentUserId={currentUser?.id}
+                    type={type}
+                    onFollowSuccess={handleFollowSuccess}
+                  />
+                ))}
               </div>
             )}
 
             {/* Empty search results message */}
             {!loading && !error && searchTerm && filteredUsers.length === 0 && (
-              <div className="text-center py-8">
+              <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 text-center">
                 <p className="text-gray-500 dark:text-gray-400">
                   No {type} found matching "{searchTerm}"
                 </p>
+                <button
+                  onClick={() => setSearchTerm('')}
+                  className="mt-2 text-[#00639C] hover:text-[#005080] text-sm font-medium"
+                >
+                  Clear search
+                </button>
               </div>
             )}
+          </main>
+
+          {/* RIGHT SIDEBAR */}
+          <aside className="w-[320px] hidden xl:block sticky top-16 h-[calc(100vh-4rem)] overflow-y-auto overflow-x-hidden scrollbar-hide">
+            <RightbarRecruiters />
+          </aside>
+        </div>
+      </div>
+    </>
+  );
+}
+
+// UserCard Component
+function UserCard({ 
+  user, 
+  currentUserId,
+  type,
+  onFollowSuccess
+}: {
+  user: FollowerUser;
+  currentUserId: string;
+  type: string;
+  onFollowSuccess: (targetUserId: string, isFollowing: boolean) => void;
+}) {
+  const getFullName = (user: FollowerUser) => {
+    const mainName = `${user.firstName || ''} ${user.lastName || ''}`.trim();
+    return user.otherNames ? `${mainName} ${user.otherNames}` : mainName;
+  };
+
+  const fullName = getFullName(user);
+
+  return (
+    <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow">
+      <div className="flex items-start justify-between">
+        <div className="flex items-start space-x-4 flex-1">
+          <Link href={`/dashboard/profile/${user.id}`} className="flex-shrink-0">
+            <Image
+              src={
+                user.profileImage
+                  ? `${process.env.NEXT_PUBLIC_FILE_URL}/${user.profileImage}`
+                  : '/avatar.png'
+              }
+              alt={fullName}
+              width={64}
+              height={64}
+              className="w-16 h-16 rounded-full object-cover border-2 border-gray-200 dark:border-gray-700"
+              onError={(e) => {
+                e.currentTarget.src = '/avatar.png';
+              }}
+            />
+          </Link>
+          
+          <div className="flex-1 min-w-0">
+            <Link 
+              href={`/dashboard/profile/${user.id}`}
+              className="group block"
+            >
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white group-hover:text-[#00639C] truncate">
+                {fullName}
+              </h3>
+            </Link>
+            
+            {user.role && (
+              <p className="text-sm text-[#00639C] font-medium mt-1">
+                {user.role}
+              </p>
+            )}
+            
+            {user.location && (
+              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 truncate">
+                📍 {user.location}
+              </p>
+            )}
+            
+            {user.bio && (
+              <p className="text-sm text-gray-500 dark:text-gray-500 mt-2 line-clamp-2">
+                {user.bio}
+              </p>
+            )}
+            
+            <div className="flex items-center space-x-4 mt-3">
+              <span className="text-xs text-gray-500 dark:text-gray-400">
+                <span className="font-semibold">{user.followersCount}</span> followers
+              </span>
+              <span className="text-xs text-gray-500 dark:text-gray-400">
+                <span className="font-semibold">{user.followingCount}</span> following
+              </span>
+            </div>
           </div>
-        </main>
+        </div>
+        
+        <div className="ml-4 flex-shrink-0">
+          {currentUserId && user.id.toString() !== currentUserId && (
+            <FollowButton
+              targetUserId={user.id.toString()}
+              currentUserId={currentUserId}
+              initialFollowing={user.is_following || false}
+              followerCount={user.followersCount}
+              size="md"
+              showCount={false}
+              onFollowChange={(isFollowing) => onFollowSuccess(user.id.toString(), isFollowing)}
+            />
+          )}
+        </div>
       </div>
     </div>
   );
