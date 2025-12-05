@@ -11,7 +11,7 @@ const ChatButton: React.FC<ChatButtonProps> = ({ onClick, unreadCount = 0 }) => 
   return (
     <button
       onClick={onClick}
-      className="fixed bottom-4 right-4 z-40 bg-blue-600 text-white p-4 rounded-full shadow-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all transform hover:scale-105"
+      className="fixed bottom-4 right-4 z-40 bg-[#0A66C2] text-white p-4 rounded-full shadow-lg hover:bg-[#084a8a] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all transform hover:scale-105"
     >
       <div className="relative">
         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">

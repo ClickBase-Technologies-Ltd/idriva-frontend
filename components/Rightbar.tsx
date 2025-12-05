@@ -17,7 +17,7 @@ export default function RightbarRecruiters({ recruiters = [] }) {
         </p>
 
         <Link
-          href="/premium"
+          href="/dashboard/upgrade"
           className="block mt-3 w-full bg-[#005a8c] text-white py-1.5 rounded text-sm hover:bg-[#004a6b] text-center"
         >
           Try Premium

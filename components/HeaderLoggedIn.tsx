@@ -18,8 +18,10 @@ import {
   faCog,
   faSignOutAlt,
   faBars,
-  faTimes
+  faTimes,
+  faBell
 } from '@fortawesome/free-solid-svg-icons';
+import api from '@/lib/api';
 
 interface User {
   id: string;
@@ -51,6 +53,9 @@ export default function HeaderLoggedIn() {
   const [searchLoading, setSearchLoading] = useState(false);
 
   const searchRef = useRef<HTMLDivElement>(null);
+
+  const [unreadCount, setUnreadCount] = useState(0);
+
 
   useEffect(() => {
     // Check for saved theme preference or default to system preference
@@ -188,6 +193,24 @@ export default function HeaderLoggedIn() {
     */
   };
 
+  useEffect(() => {
+  const fetchUnreadCount = async () => {
+    try {
+      const response = await api.get('/notifications/unread-count');
+      if (response.data.success) {
+        setUnreadCount(response.data.data.count);
+      }
+    } catch (error) {
+      console.error('Error fetching unread count:', error);
+    }
+  };
+
+    fetchUnreadCount();
+  // Poll for new notifications every 30 seconds
+  const interval = setInterval(fetchUnreadCount, 30000);
+  return () => clearInterval(interval);
+}, []);
+
   const handleLogout = () => {
     localStorage.removeItem('user');
     localStorage.removeItem('token');
@@ -202,7 +225,7 @@ export default function HeaderLoggedIn() {
       { href: '/dashboard', icon: faHouse, label: 'Home' },
       { href: '/dashboard/driver/jobs', icon: faBriefcase, label: 'Jobs' },
       { href: '/dashboard/learning', icon: faBook, label: 'Learning' },
-      { href: '/certifications', icon: faCertificate, label: 'Certifications' },
+      // { href: '/certifications', icon: faCertificate, label: 'Certifications' },
       { href: '#', icon: faComments, label: 'Messages' },
     ],
     Instructor: [
@@ -344,6 +367,7 @@ export default function HeaderLoggedIn() {
             </Link>
           ))}
 
+
           {/* Dark Mode Toggle */}
           <button 
             onClick={toggleDarkMode}
@@ -356,6 +380,14 @@ export default function HeaderLoggedIn() {
             />
           </button>
 
+          <Link href="/dashboard/notifications" className="relative">
+  <FontAwesomeIcon icon={faBell} className="text-xl" />
+  {unreadCount > 0 && (
+    <span className="absolute -top-1 -right-1 bg-red-600 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+      {unreadCount > 9 ? '9+' : unreadCount}
+    </span>
+  )}
+</Link>
           {/* User Profile with Dropdown */}
           {user && (
             <div 
