@@ -37,6 +37,7 @@ export default function CourseDetailPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const courseId = searchParams.get("courseId");
+  const lessonId = searchParams.get("lessonId"); // <-- new query param
 
   const [course, setCourse] = useState<Course | null>(null);
   const [loading, setLoading] = useState(true);
@@ -52,6 +53,11 @@ export default function CourseDetailPage() {
       try {
         const res = await api.get(`/learning/${courseId}`);
         setCourse(res.data);
+
+        // If lessonId exists, redirect immediately to lesson page
+        if (lessonId) {
+          router.replace(`/dashboard/learning/lesson?courseId=${courseId}&lessonId=${lessonId}`);
+        }
       } catch (err) {
         console.error(err);
         setMessage('Failed to fetch course data.');
@@ -61,7 +67,7 @@ export default function CourseDetailPage() {
       }
     };
     fetchCourse();
-  }, [id]);
+  }, [id, courseId, lessonId, router]);
 
   // Handle Paystack redirect verification
   useEffect(() => {
@@ -79,19 +85,17 @@ export default function CourseDetailPage() {
         if (res.data.enrolled) {
           setStatus('success');
           setMessage('Payment successful! Redirecting to your course...');
+          setCourse(prev => prev ? { ...prev, enrolled: true } : prev);
 
-          // Update enrollment state
-          setCourse((prev) => (prev ? { ...prev, enrolled: true } : prev));
-
-          // Redirect to first lesson safely
-          const firstLessonId = course?.modules?.find((m) => m.lessons?.length)?.lessons?.[0]?.id;
+          // Redirect to first lesson if exists
+          const firstLessonId = course?.modules?.find(m => m.lessons?.length)?.lessons?.[0]?.id;
           setTimeout(() => {
             if (firstLessonId) {
               router.replace(`/dashboard/learning/lesson?courseId=${courseId}&lessonId=${firstLessonId}`);
             } else {
               router.replace(`/dashboard/learning?courseId=${courseId}`);
             }
-          }, 2500); // show success message for 2.5s
+          }, 2500);
         } else {
           setStatus('error');
           setMessage(res.data.message || 'Payment verification failed.');
@@ -104,15 +108,15 @@ export default function CourseDetailPage() {
     };
 
     verifyPayment();
-  }, [searchParams, id, router, course]);
+  }, [searchParams, courseId, router, course]);
 
-  const startCourse = () => {
+  const startCourse = (specificLessonId?: number) => {
     if (!course) return;
-    const firstLessonId = course.modules?.find((m) => m.lessons?.length)?.lessons?.[0]?.id;
+    const firstLessonId = specificLessonId || course.modules?.find(m => m.lessons?.length)?.lessons?.[0]?.id;
     if (firstLessonId) {
-      router.replace(`/dashboard/learning/${courseId}/lesson/${firstLessonId}`);
+      router.replace(`/dashboard/learning/lesson?courseId=${courseId}&lessonId=${firstLessonId}`);
     } else {
-      router.replace(`/dashboard/learning/${courseId}`);
+      router.replace(`/dashboard/learning?courseId=${courseId}`);
     }
   };
 
@@ -136,15 +140,10 @@ export default function CourseDetailPage() {
           setMessage(res.data.message || 'Failed to enroll. Try again.');
         }
       } else {
-        // Paid course: redirect to Paystack
         const res = await api.post(`/learning/${course.id}/checkout`);
         const redirectUrl = res.data.authorization_url || res.data.url;
-        if (redirectUrl) {
-          window.location.href = redirectUrl;
-        } else {
-          setStatus('error');
-          setMessage(res.data.message || 'Failed to initiate payment.');
-        }
+        if (redirectUrl) window.location.href = redirectUrl;
+        else setStatus('error');
       }
     } catch (err) {
       console.error(err);
@@ -156,9 +155,7 @@ export default function CourseDetailPage() {
   };
 
   const toggleModule = (moduleId: number) => {
-    setExpandedModuleIds((prev) =>
-      prev.includes(moduleId) ? prev.filter((id) => id !== moduleId) : [...prev, moduleId]
-    );
+    setExpandedModuleIds(prev => prev.includes(moduleId) ? prev.filter(id => id !== moduleId) : [...prev, moduleId]);
   };
 
   return (
@@ -171,21 +168,12 @@ export default function CourseDetailPage() {
           </aside>
 
           <main className="flex-1 py-8">
-            {loading ? (
-              <p>Loading course...</p>
-            ) : !course ? (
-              <p>Course not found.</p>
-            ) : (
+            {loading ? <p>Loading course...</p> : !course ? <p>Course not found.</p> : (
               <>
-                {/* Course Header */}
                 <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
                   <h1 className="text-3xl font-bold text-[#0A66C2]">{course.title}</h1>
                   <p className="mt-2 text-gray-600">{course.description}</p>
-                  <img
-                    src={course.thumbnail || '/cover_photo.jpg'}
-                    alt={course.title}
-                    className="w-full h-64 object-cover rounded mt-4"
-                  />
+                  <img src={course.thumbnail || '/cover_photo.jpg'} alt={course.title} className="w-full h-64 object-cover rounded mt-4" />
 
                   <button
                     onClick={handleEnrollAndStart}
@@ -196,7 +184,6 @@ export default function CourseDetailPage() {
                     {course.enrolled ? 'Continue Course' : 'Enroll & Start'}
                   </button>
 
-                  {/* Payment/Enrollment Status */}
                   {status !== 'idle' && (
                     <div className="mt-4 flex flex-col items-center gap-2">
                       {status === 'loading' && (
@@ -221,10 +208,9 @@ export default function CourseDetailPage() {
                   )}
                 </div>
 
-                {/* Modules */}
                 <div className="bg-white rounded-lg shadow-sm p-6 mb-16">
                   <h2 className="text-2xl font-semibold mb-4">Course Modules</h2>
-                  {course.modules?.map((m) => {
+                  {course.modules?.map(m => {
                     const isExpanded = expandedModuleIds.includes(m.id);
                     return (
                       <div key={m.id} className="mb-4 border-b pb-2">
@@ -233,23 +219,18 @@ export default function CourseDetailPage() {
                           className="w-full flex justify-between items-center py-2 text-left font-medium text-gray-800 hover:text-[#0A66C2]"
                         >
                           {m.title} ({m.lessons?.length || 0} lessons)
-                          {isExpanded ? (
-                            <ChevronUpIcon className="w-5 h-5 text-gray-500" />
-                          ) : (
-                            <ChevronDownIcon className="w-5 h-5 text-gray-500" />
-                          )}
+                          {isExpanded ? <ChevronUpIcon className="w-5 h-5 text-gray-500" /> : <ChevronDownIcon className="w-5 h-5 text-gray-500" />}
                         </button>
-
-                        {isExpanded && m.lessons?.length ? (
+                        {isExpanded && m.lessons?.length && (
                           <ul className="ml-4 mt-2 list-decimal list-inside text-gray-700">
-                            {m.lessons.map((l) => (
+                            {m.lessons.map(l => (
                               <li key={l.id} className="py-1 flex justify-between">
                                 <span>{l.title}</span>
                                 {l.duration && <span className="text-sm text-gray-500">{l.duration}</span>}
                               </li>
                             ))}
                           </ul>
-                        ) : null}
+                        )}
                       </div>
                     );
                   })}

@@ -1,10 +1,9 @@
-// ...existing code...
 'use client';
 
 export const dynamic = "force-dynamic"; // ✅ Fix for Next.js 16 + dynamic route
 
-import { useEffect, useMemo, useState } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import HeaderLoggedIn from '@/components/HeaderLoggedIn';
 import Sidebar from '@/components/Sidebar';
 import RightbarRecruiters from '@/components/Rightbar';
@@ -19,8 +18,10 @@ type LessonItem = {
 };
 
 export default function CourseManagePage() {
-  const { id } = useParams() as { id: string };
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const courseId = searchParams.get('courseId');
+
   const API = (process.env.NEXT_PUBLIC_API_URL ?? '').replace(/\/$/, '');
 
   const [course, setCourse] = useState<any>(null);
@@ -34,16 +35,16 @@ export default function CourseManagePage() {
   const [modulesLoading, setModulesLoading] = useState(false);
 
   useEffect(() => {
-    if (!id) return;
+    if (!courseId) return;
     fetchCourse();
     fetchModulesForCourse();
-  }, [id]);
+  }, [courseId]);
 
   async function fetchCourse() {
     setLoading(true);
     setError('');
     try {
-      const res = await fetch(`${API}/instructor/courses/${id}`, { credentials: 'include', headers: { Accept: 'application/json' } });
+      const res = await fetch(`${API}/instructor/courses/${courseId}`, { credentials: 'include', headers: { Accept: 'application/json' } });
       if (!res.ok) {
         setError(`Failed to load (${res.status})`);
         setCourse(null);
@@ -61,6 +62,7 @@ export default function CourseManagePage() {
   }
 
   async function fetchModulesForCourse() {
+    if (!courseId) return;
     setModulesLoading(true);
     try {
       const res = await fetch(`${API}/instructor/modules`, { credentials: 'include', headers: { Accept: 'application/json' } });
@@ -75,7 +77,7 @@ export default function CourseManagePage() {
           position: typeof m.position !== 'undefined' ? Number(m.position) : 0,
           created_at: m.created_at ?? m.createdAt ?? undefined,
         }))
-        .filter((m: ModuleItem) => String(m.course_id) === String(id))
+        .filter((m: ModuleItem) => String(m.course_id) === String(courseId))
         .sort((a: ModuleItem, b: ModuleItem) => (Number(a.position ?? 0) - Number(b.position ?? 0)));
       setModules(filtered);
     } catch (err) {
@@ -113,10 +115,10 @@ export default function CourseManagePage() {
   }
 
   async function togglePublish() {
-    if (!course) return;
+    if (!course || !courseId) return;
     setSaving(true);
     try {
-      const res = await fetch(`${API}/instructor/courses/${id}`, {
+      const res = await fetch(`${API}/instructor/courses/${courseId}`, {
         method: 'PUT',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
@@ -137,9 +139,9 @@ export default function CourseManagePage() {
   }
 
   async function removeCourse() {
-    if (!confirm('Delete this course? This cannot be undone.')) return;
+    if (!courseId || !confirm('Delete this course? This cannot be undone.')) return;
     try {
-      const res = await fetch(`${API}/instructor/courses/${id}`, { method: 'DELETE', credentials: 'include', headers: { Accept: 'application/json' } });
+      const res = await fetch(`${API}/instructor/courses/${courseId}`, { method: 'DELETE', credentials: 'include', headers: { Accept: 'application/json' } });
       const json = await res.json().catch(() => ({}));
       if (res.ok) {
         router.push('/instructor/my-courses');
@@ -159,7 +161,9 @@ export default function CourseManagePage() {
     s -= hh * 3600;
     const mm = Math.floor(s / 60);
     const ss = s - mm * 60;
-    return hh > 0 ? `${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}:${String(ss).padStart(2,'0')}` : `${String(mm).padStart(2,'0')}:${String(ss).padStart(2,'0')}`;
+    return hh > 0
+      ? `${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}:${String(ss).padStart(2,'0')}`
+      : `${String(mm).padStart(2,'0')}:${String(ss).padStart(2,'0')}`;
   }
 
   return (
@@ -181,6 +185,7 @@ export default function CourseManagePage() {
                 <div className="p-8">Course not found</div>
               ) : (
                 <>
+                  {/* Course Header */}
                   <div className="bg-white dark:bg-gray-800 rounded shadow p-6 mb-6">
                     <div className="flex items-start justify-between">
                       <div>
@@ -194,9 +199,9 @@ export default function CourseManagePage() {
                       </div>
 
                       <div className="flex gap-2">
-                        <button onClick={() => router.push(`/instructor/courses/edit?courseId=${id}`)} className="px-3 py-2 border rounded">Edit</button>
+                        <button onClick={() => router.push(`/instructor/courses/edit?courseId=${courseId}`)} className="px-3 py-2 border rounded">Edit</button>
                         <button
-                          onClick={() => router.push(`/instructor/modules/create?course_id=${encodeURIComponent(id)}`)}
+                          onClick={() => router.push(`/instructor/modules/create?course_id=${encodeURIComponent(courseId!)}`)}
                           className="px-3 py-2 border rounded"
                         >
                           Add / Manage Modules
@@ -231,7 +236,7 @@ export default function CourseManagePage() {
                       <div className="p-6 bg-white dark:bg-gray-800 rounded-lg text-center">Loading modules…</div>
                     ) : modules.length === 0 ? (
                       <div className="p-6 bg-white dark:bg-gray-800 rounded-lg text-center">
-                        No modules yet. <button onClick={() => router.push(`/instructor/modules/create?course_id=${encodeURIComponent(id)}`)} className="text-[#0A66C2] underline ml-1">Create module</button>
+                        No modules yet. <button onClick={() => router.push(`/instructor/modules/create?course_id=${encodeURIComponent(courseId!)}`)} className="text-[#0A66C2] underline ml-1">Create module</button>
                       </div>
                     ) : modules.map((m) => (
                       <div key={m.id} className="bg-white dark:bg-gray-800 border rounded-lg p-4 shadow-sm">
@@ -250,7 +255,7 @@ export default function CourseManagePage() {
                             <button onClick={() => toggleModuleOpen(m)} className="px-3 py-1 border rounded-md text-sm bg-white">
                               {openModules[m.id] ? 'Hide lessons' : 'Show lessons'}
                             </button>
-                            <button onClick={() => router.push(`/instructor/modules/create?course_id=${encodeURIComponent(id)}&module_id=${m.id}`)} className="px-3 py-1 bg-[#0A66C2] hover:bg-[#0959a8] text-white rounded-md text-sm">
+                            <button onClick={() => router.push(`/instructor/modules/create?course_id=${encodeURIComponent(courseId!)}&module_id=${m.id}`)} className="px-3 py-1 bg-[#0A66C2] hover:bg-[#0959a8] text-white rounded-md text-sm">
                               Add lesson
                             </button>
                           </div>
@@ -262,7 +267,7 @@ export default function CourseManagePage() {
                               <div className="p-4 text-sm text-gray-500">No lessons yet. Use "Add lesson" to create one.</div>
                             ) : (
                               <div className="space-y-3">
-                                {lessonsByModule[m.id].map((l, idx) => (
+                                {lessonsByModule[m.id].map((l) => (
                                   <div key={l.id} className="flex items-center justify-between p-3 rounded hover:bg-gray-50 dark:hover:bg-gray-900">
                                     <div>
                                       <div className="text-sm font-medium">{l.title}</div>
@@ -270,7 +275,7 @@ export default function CourseManagePage() {
                                     </div>
 
                                     <div className="flex items-center gap-2">
-                                      <button onClick={() => router.push(`/instructor/modules/create?course_id=${encodeURIComponent(id)}&module_id=${m.id}&lesson_id=${l.id}`)} className="px-3 py-1 border rounded-md text-sm">Open</button>
+                                      <button onClick={() => router.push(`/instructor/modules/create?course_id=${encodeURIComponent(courseId!)}&module_id=${m.id}&lesson_id=${l.id}`)} className="px-3 py-1 border rounded-md text-sm">Open</button>
                                     </div>
                                   </div>
                                 ))}
@@ -294,4 +299,3 @@ export default function CourseManagePage() {
     </>
   );
 }
-// ...existing code...

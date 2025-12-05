@@ -1,325 +1,199 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import Link from 'next/link';
+import { useEffect, useState, useMemo } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import api from '@/lib/api';
-import HeaderLoggedIn from '@/components/HeaderLoggedIn';
 import Sidebar from '@/components/Sidebar';
 import RightbarRecruiters from '@/components/Rightbar';
+import HeaderLoggedIn from '@/components/HeaderLoggedIn';
 import Footer from '@/components/Footer';
+import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
+import { ClockIcon, CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/solid';
 
 interface Lesson {
   id: number;
   title: string;
   content?: string;
   duration?: string;
-  content_type?: string;
-  content_url?: string;
-  module_id?: number;
-  course_id?: number;
-  position?: number;
-  duration_seconds?: number;
-  created_at?: string;
-  updated_at?: string;
+  completed?: boolean;
 }
 
-interface ModuleWithLessons {
+interface Module {
   id: number;
   title: string;
-  position?: number;
-  lessons: Lesson[];
+  lessons?: Lesson[];
 }
 
-interface CourseWithModules {
+interface Course {
   id: number;
-  title?: string;
-  description?: string;
-  modules: ModuleWithLessons[];
+  title: string;
+  modules?: Module[];
 }
 
-export default function LessonPage() {
- 
-
- const router = useRouter();
+export default function CourseLessonPage() {
   const searchParams = useSearchParams();
-  const courseId = searchParams.get("courseId");
-  const lessonId = searchParams.get("lessonId");
+  const router = useRouter();
+  const courseId = searchParams.get('courseId');
+  const lessonIdParam = searchParams.get('lessonId');
 
-  const [course, setCourse] = useState<CourseWithModules | null>(null);
-  const [lesson, setLesson] = useState<Lesson | null>(null);
+  const [course, setCourse] = useState<Course | null>(null);
+  const [currentLesson, setCurrentLesson] = useState<Lesson | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  // Fetch course structure (modules + lessons) and the lesson payload
+  /** Fetch course data */
   useEffect(() => {
-    const fetchData = async () => {
+    if (!courseId) return;
+
+    const fetchCourse = async () => {
       setLoading(true);
       setError(null);
-
-      // if (!courseId || !lessonId) {
-      //   setError('Missing courseId or lessonId in route params');
-      //   setLoading(false);
-      //   return;
-      // }
-
       try {
-        // 1) Fetch course with modules and lessons (ordered by position)
-        const courseRes = await api.get(`/learning/${courseId}`);
-        const courseData: CourseWithModules = courseRes.data;
-
-        // Normalize modules.lessons to arrays
-        courseData.modules = (courseData.modules || []).map((m: any) => ({
-          id: m.id,
-          title: m.title,
-          position: m.position,
-          lessons: (m.lessons || []).map((l: any) => ({
-            id: Number(l.id),
-            title: l.title,
-            content: l.content,
-            content_type: l.content_type,
-            content_url: l.content_url,
-            module_id: l.module_id,
-            course_id: l.course_id,
-            position: l.position,
-            duration_seconds: l.duration_seconds,
-            created_at: l.created_at,
-            updated_at: l.updated_at,
-          })),
-        }));
-
-        setCourse(courseData);
-
-        // 2) Fetch the single lesson payload (keeps content up-to-date)
-        const lessonRes = await api.get(`/learning/${courseId}/lessons/${lessonId}`);
-        setLesson(lessonRes.data);
-      } catch (err: any) {
-        console.error('Failed to load course/lesson', err);
-        setError(err.response?.data ?? err.message ?? 'Unknown error');
+        const res = await api.get(`/learning/${courseId}`);
+        setCourse(res.data);
+      } catch (err) {
+        console.error(err);
+        setError('Failed to fetch course data.');
       } finally {
         setLoading(false);
       }
     };
 
-    fetchData();
-  }, [courseId, lessonId]);
+    fetchCourse();
+  }, [courseId]);
 
-  // Build a flat ordered list of lessons across modules to compute prev/next
-  const flatLessons = useMemo(() => {
-    if (!course) return [] as Lesson[];
-    const list: Lesson[] = [];
-    const sortedModules = [...course.modules].sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
-    for (const m of sortedModules) {
-      const sortedLessons = [...(m.lessons || [])].sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
-      for (const l of sortedLessons) {
-        list.push({ ...l, module_id: m.id });
-      }
-    }
-    return list;
+  /** Flatten lessons for progress tracking */
+  const allLessons = useMemo(() => {
+    if (!course?.modules) return [];
+    return course.modules.flatMap((m) => m.lessons || []);
   }, [course]);
 
-  const currentIndex = useMemo(() => {
-    if (!flatLessons.length || !lesson) return -1;
-    return flatLessons.findIndex((l) => Number(l.id) === Number(lesson.id));
-  }, [flatLessons, lesson]);
+  /** Set current lesson */
+  useEffect(() => {
+    if (!course || !lessonIdParam) return;
+    const lessonId = Number(lessonIdParam);
+    const lesson = allLessons.find((l) => l.id === lessonId);
 
-  const prevLesson = useMemo(() => {
-    if (currentIndex > 0) return flatLessons[currentIndex - 1];
-    return null;
-  }, [flatLessons, currentIndex]);
+    if (lesson) {
+      setCurrentLesson(lesson);
+    } else {
+      setError('Lesson not found.');
+    }
+  }, [course, lessonIdParam, allLessons]);
 
-  const nextLesson = useMemo(() => {
-    if (currentIndex >= 0 && currentIndex < flatLessons.length - 1) return flatLessons[currentIndex + 1];
-    return null;
-  }, [flatLessons, currentIndex]);
+  /** Progress tracking */
+  const lessonIndex = useMemo(() => {
+    if (!currentLesson) return null;
+    return allLessons.findIndex((l) => l.id === currentLesson.id) + 1; // 1-based
+  }, [currentLesson, allLessons]);
 
-  const goToLesson = (target: Lesson | null) => {
-    if (!target) return;
-    // navigate to the route pattern used by your app
-    router.push(`/dashboard/learning/${courseId}/lesson/${target.id}`);
+  const totalLessons = allLessons.length;
+
+  /** Navigation helpers */
+  const getNextLessonId = (): number | null => {
+    if (!currentLesson || !lessonIndex) return null;
+    return allLessons[lessonIndex] ? allLessons[lessonIndex].id : null;
   };
 
-  // Render helpers
-  const renderMedia = () => {
-    if (!lesson) return null;
-
-    if (lesson.content_type === 'video' && lesson.content_url) {
-      // simple responsive video player
-      return (
-        <div className="w-full aspect-video bg-black rounded overflow-hidden">
-          <video
-            key={lesson.content_url}
-            controls
-            src={lesson.content_url}
-            className="w-full h-full object-cover"
-          />
-        </div>
-      );
-    }
-
-    if (lesson.content_type === 'audio' && lesson.content_url) {
-      return (
-        <div className="w-full bg-white rounded p-4">
-          <audio controls src={lesson.content_url} className="w-full" />
-        </div>
-      );
-    }
-
-    // Fallback: textual content
-    return (
-      <div className="prose max-w-none">
-        <div dangerouslySetInnerHTML={{ __html: lesson.content || '<p>No content available.</p>' }} />
-      </div>
-    );
+  const getPreviousLessonId = (): number | null => {
+    if (!currentLesson || !lessonIndex) return null;
+    return lessonIndex > 1 ? allLessons[lessonIndex - 2].id : null;
   };
 
+  const goToLesson = (lessonId: number) => {
+    router.push(`/dashboard/learning/lesson?courseId=${courseId}&lessonId=${lessonId}`);
+  };
+
+  /** Render */
   return (
     <>
       <HeaderLoggedIn />
       <div className="bg-gray-50 min-h-screen pt-2">
         <div className="max-w-[1600px] mx-auto px-4 lg:px-6 flex gap-6">
-          {/* Left sidebar (course navigation) */}
-          <aside className="w-[320px] hidden lg:block sticky top-16 h-[calc(100vh-4rem)] overflow-y-auto">
-            <div className="bg-white rounded-lg shadow-sm p-4">
-              <h3 className="text-lg font-semibold mb-3">Course contents</h3>
-
-              {!course ? (
-                <p className="text-sm text-gray-500">Loading contents...</p>
-              ) : (
-                <div className="space-y-4">
-                  {course.modules
-                    .slice()
-                    .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
-                    .map((m) => (
-                      <div key={m.id}>
-                        <div className="text-sm font-medium text-gray-700 mb-2">{m.title}</div>
-                        <ul className="space-y-1">
-                          {m.lessons
-                            .slice()
-                            .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
-                            .map((l) => {
-                              const isActive = lesson && Number(l.id) === Number(lesson.id);
-                              return (
-                                <li key={l.id}>
-                                  <Link
-                                    href={`/dashboard/learning/${courseId}/lesson/${l.id}`}
-                                    className={`block px-3 py-2 rounded text-sm ${
-                                      isActive ? 'bg-[#0A66C2] text-white' : 'text-gray-700 hover:bg-gray-100'
-                                    }`}
-                                  >
-                                    <div className="flex items-center justify-between">
-                                      <span className="truncate">{l.title}</span>
-                                      <span className="ml-2 text-xs text-gray-400">
-                                        {l.duration_seconds ? `${l.duration_seconds}s` : ''}
-                                      </span>
-                                    </div>
-                                  </Link>
-                                </li>
-                              );
-                            })}
-                        </ul>
-                      </div>
-                    ))}
-                </div>
-              )}
-            </div>
+          {/* Sidebar */}
+          <aside className="w-[280px] hidden lg:block sticky top-16 h-[calc(100vh-4rem)] overflow-y-auto">
+            <Sidebar />
           </aside>
 
-          {/* Main content */}
-          <main className="flex-1 py-8 mb-16">
-            {loading ? (
-              <div className="p-6 bg-white rounded-lg shadow-sm">
-                <p>Loading lesson...</p>
-              </div>
-            ) : error ? (
-              <div className="p-4 bg-red-100 text-red-700 rounded">
-                <h2 className="font-bold">Failed to load lesson</h2>
-                <pre className="text-xs">{JSON.stringify(error, null, 2)}</pre>
-              </div>
-            ) : !lesson ? (
-              <div className="p-6 bg-white rounded-lg shadow-sm">
-                <p>Lesson not found.</p>
-              </div>
-            ) : (
+          {/* Main Lesson Area */}
+          <main className="flex-1 py-8">
+            {loading && (
+              <div className="p-8 text-center text-gray-500 text-lg">Loading course...</div>
+            )}
+
+            {!loading && error && (
+              <div className="p-8 text-center text-red-600 text-lg">{error}</div>
+            )}
+
+            {!loading && !error && course && currentLesson && (
               <>
-                <div className="bg-white rounded-lg shadow-sm p-6 mb-2">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1">
-                      <h1 className="text-3xl font-bold text-[#0A66C2]">{lesson.title}</h1>
-                      <p className="mt-2 text-gray-600">
-                        {lesson.duration || (lesson.duration_seconds ? `${lesson.duration_seconds}s` : '')}
-                      </p>
-                    </div>
-
-                    <div className="flex items-center gap-3">
-                      {prevLesson ? (
-                        <button
-                          onClick={() => goToLesson(prevLesson)}
-                          className="px-4 py-2 bg-white border rounded text-sm hover:bg-gray-50"
-                        >
-                          Previous
-                        </button>
-                      ) : (
-                        <div className="text-sm text-gray-400">First lesson</div>
-                      )}
-
-                      {nextLesson ? (
-                        <button
-                          onClick={() => goToLesson(nextLesson)}
-                          className="px-4 py-2 bg-[#0A66C2] text-white rounded text-sm hover:opacity-95"
-                        >
-                          Next lesson
-                        </button>
-                      ) : (
-                        <div className="text-sm text-gray-400">Last lesson</div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="mt-6">{renderMedia()}</div>
-
-                  <div className="mt-6 text-gray-800 leading-relaxed">
-                    {/* textual content fallback if media shown above */}
-                    {lesson.content && lesson.content_type !== 'video' && lesson.content_type !== 'audio' && (
-                      <div dangerouslySetInnerHTML={{ __html: lesson.content }} />
+                {/* Lesson Header */}
+                <div className="bg-white rounded-xl shadow-md p-6 mb-6">
+                  <div className="flex items-center justify-between">
+                    <h1 className="text-3xl font-bold text-[#0A66C2]">{currentLesson.title}</h1>
+                    {lessonIndex && (
+                      <span className="text-sm text-gray-500">
+                        Lesson {lessonIndex} of {totalLessons}
+                      </span>
                     )}
                   </div>
 
-                  {/* Progress / module info */}
-                  <div className="mt-6 border-t pt-4 text-sm text-gray-600">
-                    <div>
-                      Module:{' '}
-                      {course
-                        ? course.modules.find((m) => m.id === lesson.module_id)?.title ?? 'Unknown module'
-                        : '—'}
+                  {/* Progress bar */}
+                  {lessonIndex && (
+                    <div className="mt-2 w-full bg-gray-200 rounded-full h-2">
+                      <div
+                        className="bg-[#0A66C2] h-2 rounded-full transition-all"
+                        style={{ width: `${(lessonIndex / totalLessons) * 100}%` }}
+                      />
                     </div>
-                    <div>Lesson {currentIndex >= 0 ? currentIndex + 1 : '—'} of {flatLessons.length}</div>
-                  </div>
+                  )}
+
+                  {currentLesson.completed !== undefined && (
+                    <div className="flex items-center gap-2 mt-2">
+                      {currentLesson.completed ? (
+                        <CheckCircleIcon className="w-6 h-6 text-green-500" />
+                      ) : (
+                        <XCircleIcon className="w-6 h-6 text-gray-400" />
+                      )}
+                    </div>
+                  )}
+
+                  {currentLesson.duration && (
+                    <p className="flex items-center gap-1 mt-2 text-gray-500 text-sm">
+                      <ClockIcon className="w-4 h-4" /> Duration: {currentLesson.duration}
+                    </p>
+                  )}
+                  <div
+                    className="mt-4 text-gray-800 prose max-w-none"
+                    dangerouslySetInnerHTML={{ __html: currentLesson.content || '' }}
+                  />
                 </div>
 
-                {/* Suggested next steps */}
-                <div className="bg-white rounded-lg shadow-sm p-6">
-                  <h3 className="text-lg font-semibold mb-3">Up next</h3>
-                  {nextLesson ? (
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <div className="font-medium">{nextLesson.title}</div>
-                        <div className="text-sm text-gray-500">
-                          {course?.modules.find((m) => m.id === nextLesson.module_id)?.title}
-                        </div>
-                      </div>
-                      <div>
-                        <button
-                          onClick={() => goToLesson(nextLesson)}
-                          className="px-4 py-2 bg-[#0A66C2] text-white rounded text-sm"
-                        >
-                          Continue
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <p className="text-sm text-gray-600">You have reached the end of this course.</p>
-                  )}
+                {/* Lesson Navigation */}
+                <div className="flex justify-between mb-16">
+                  <button
+                    disabled={!getPreviousLessonId()}
+                    onClick={() => {
+                      const prevId = getPreviousLessonId();
+                      if (prevId) goToLesson(prevId);
+                    }}
+                    className="inline-flex items-center gap-2 px-5 py-3 bg-gray-200 rounded-lg hover:bg-gray-300 disabled:opacity-50 transition"
+                  >
+                    <ChevronLeftIcon className="w-5 h-5" />
+                    Previous Lesson
+                  </button>
+
+                  <button
+                    disabled={!getNextLessonId()}
+                    onClick={() => {
+                      const nextId = getNextLessonId();
+                      if (nextId) goToLesson(nextId);
+                    }}
+                    className="inline-flex items-center gap-2 px-5 py-3 bg-[#0A66C2] text-white rounded-lg hover:bg-[#004182] disabled:opacity-50 transition"
+                  >
+                    Next Lesson
+                    <ChevronRightIcon className="w-5 h-5" />
+                  </button>
                 </div>
               </>
             )}

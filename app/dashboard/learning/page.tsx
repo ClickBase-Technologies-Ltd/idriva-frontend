@@ -5,26 +5,10 @@ import Sidebar from '@/components/Sidebar';
 import RightbarRecruiters from '@/components/Rightbar';
 import HeaderLoggedIn from '@/components/HeaderLoggedIn';
 import api from '@/lib/api';
-import {
-  AcademicCapIcon,
-  PlayIcon,
-  BookmarkIcon,
-  UserGroupIcon,
-  ArrowPathIcon,
-} from '@heroicons/react/24/outline';
+import { AcademicCapIcon, PlayIcon, BookmarkIcon, UserGroupIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
 
-interface Lesson {
-  id: number;
-  title: string;
-  duration?: string;
-}
-
-interface Module {
-  id: number;
-  title: string;
-  lessons?: Lesson[];
-}
-
+interface Lesson { id: number; title: string; duration?: string; }
+interface Module { id: number; title: string; lessons?: Lesson[]; }
 interface Course {
   id: number;
   title: string;
@@ -33,11 +17,7 @@ interface Course {
   price?: number | null;
   enrolled?: boolean;
   modules_count?: number;
-  instructor?: {
-    id?: number;
-    name?: string;
-    avatar?: string | null;
-  };
+  instructor?: { id?: number; name?: string; avatar?: string | null; };
   published?: boolean | number | string;
   tags?: string[];
   created_at?: string | null;
@@ -60,17 +40,10 @@ export default function LearningIndexPage() {
       const list: Course[] = Array.isArray(data) ? data : data.courses || [];
 
       // Filter published courses
-      const published = list.filter((c) => {
-        const p = c?.published;
-        return p === true || p === 1 || p === '1' || p === 'true';
-      });
+      const published = list.filter(c => c?.published === true || c?.published === 1 || c?.published === '1' || c?.published === 'true');
 
-      // Ensure enrolled is boolean
-      const normalized = published.map((c) => ({
-        ...c,
-        enrolled: Boolean(c.enrolled),
-      }));
-
+      // Normalize enrolled
+      const normalized = published.map(c => ({ ...c, enrolled: Boolean(c.enrolled) }));
       setCourses(normalized);
     } catch (e) {
       console.error('Failed to load courses', e);
@@ -81,22 +54,14 @@ export default function LearningIndexPage() {
     }
   };
 
-  useEffect(() => {
-    fetchCourses();
-  }, []);
+  useEffect(() => { fetchCourses(); }, []);
 
-  const selectCourse = (c: Course) => {
-    router.push(`/dashboard/learning/enroll?courseId=${c.id}`);
-    // router.push(`/dashboard/learning/${c.id}`);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+  const handleEnrollOrStart = (course: Course) => {
+    // Redirect to CourseDetailPage with query params
+    router.push(`/dashboard/learning/enroll?courseId=${course.id}`);
   };
 
-  const startCourse = (c: Course) => {
-    const lessonId = c.modules?.[0]?.lessons?.[0]?.id || 1;
-    router.push(`/dashboard/learning/${c.id}/lesson/${lessonId}`);
-  };
-
-  const filteredCourses = courses.filter((c) => {
+  const filteredCourses = courses.filter(c => {
     if (filter === 'all') return true;
     if (filter === 'free') return !c.price || c.price === 0;
     if (filter === 'paid') return !!c.price && c.price > 0;
@@ -121,31 +86,17 @@ export default function LearningIndexPage() {
 
               <div className="flex items-center gap-3">
                 <div className="flex items-center bg-white border rounded-full px-2 py-1 shadow-sm">
-                  <button
-                    onClick={() => setFilter('all')}
-                    className={`px-3 py-1 rounded-full text-sm ${filter === 'all' ? 'bg-[#0A66C2] text-white' : 'text-gray-600 hover:bg-gray-100'}`}
-                  >
-                    All
-                  </button>
-                  <button
-                    onClick={() => setFilter('free')}
-                    className={`px-3 py-1 rounded-full text-sm ${filter === 'free' ? 'bg-[#0A66C2] text-white' : 'text-gray-600 hover:bg-gray-100'}`}
-                  >
-                    Free
-                  </button>
-                  <button
-                    onClick={() => setFilter('paid')}
-                    className={`px-3 py-1 rounded-full text-sm ${filter === 'paid' ? 'bg-[#0A66C2] text-white' : 'text-gray-600 hover:bg-gray-100'}`}
-                  >
-                    Paid
-                  </button>
+                  {['all','free','paid'].map(f => (
+                    <button
+                      key={f}
+                      onClick={() => setFilter(f as 'all' | 'free' | 'paid')}
+                      className={`px-3 py-1 rounded-full text-sm ${filter===f ? 'bg-[#0A66C2] text-white':'text-gray-600 hover:bg-gray-100'}`}
+                    >
+                      {f.charAt(0).toUpperCase() + f.slice(1)}
+                    </button>
+                  ))}
                 </div>
-
-                <button
-                  onClick={fetchCourses}
-                  title="Refresh"
-                  className="p-2 rounded-full bg-white border hover:bg-gray-50 shadow-sm"
-                >
+                <button onClick={fetchCourses} title="Refresh" className="p-2 rounded-full bg-white border hover:bg-gray-50 shadow-sm">
                   <ArrowPathIcon className="w-5 h-5 text-gray-600" />
                 </button>
               </div>
@@ -161,121 +112,57 @@ export default function LearningIndexPage() {
             ) : filteredCourses.length === 0 ? (
               <div className="p-8 bg-white rounded shadow text-center">
                 <h3 className="text-lg font-medium">No published courses available</h3>
-                <p className="text-sm text-gray-500 mt-2">Instructors publish courses; check back later or contact support.</p>
+                <p className="text-sm text-gray-500 mt-2">Check back later or contact support.</p>
                 <div className="mt-4 flex justify-center gap-3">
                   <button onClick={fetchCourses} className="px-4 py-2 border rounded-md text-sm">Retry</button>
                 </div>
               </div>
             ) : (
-              <>
-                <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                  {filteredCourses.map((c) => (
-                    <article
-                      key={c.id}
-                      className="bg-white rounded-lg shadow-sm border hover:shadow-md transition overflow-hidden flex flex-col"
-                    >
-                      {/* Thumbnail */}
-                      <div className="relative h-44 w-full bg-gray-100">
-                        <img
-                          src={c.thumbnail && c.thumbnail.trim() !== '' ? c.thumbnail : '/cover_photo.jpg'}
-                          alt={c.title}
-                          className="w-full h-full object-cover"
-                        />
-                        <div className="absolute left-3 bottom-3 bg-white/90 text-xs text-gray-700 rounded-full px-2 py-1 flex items-center gap-2 shadow-sm">
-                          <AcademicCapIcon className="w-4 h-4 text-[#0A66C2]" />
-                          <span>
-                            {typeof c.modules_count === 'number'
-                              ? `${c.modules_count} module${c.modules_count === 1 ? '' : 's'}`
-                              : '0 modules'}
-                          </span>
+              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                {filteredCourses.map(c => (
+                  <article key={c.id} className="bg-white rounded-lg shadow-sm border hover:shadow-md transition overflow-hidden flex flex-col">
+                    <div className="relative h-44 w-full bg-gray-100">
+                      <img src={c.thumbnail?.trim() ? c.thumbnail : '/cover_photo.jpg'} alt={c.title} className="w-full h-full object-cover" />
+                      <div className="absolute left-3 bottom-3 bg-white/90 text-xs text-gray-700 rounded-full px-2 py-1 flex items-center gap-2 shadow-sm">
+                        <AcademicCapIcon className="w-4 h-4 text-[#0A66C2]" />
+                        <span>{c.modules_count ? `${c.modules_count} module${c.modules_count>1?'s':''}`:'0 modules'}</span>
+                      </div>
+                    </div>
+                    <div className="p-4 flex-1 flex flex-col">
+                      <h3 className="text-lg font-medium text-gray-900 line-clamp-2">{c.title}</h3>
+                      <p className="text-sm text-gray-600 mt-2 line-clamp-3">{c.description}</p>
+
+                      <div className="mt-4 flex items-center justify-between text-sm text-gray-500">
+                        <div className="flex items-center gap-3">
+                          <img src={c.instructor?.avatar?.trim() ? c.instructor.avatar : '/avatar.png'} alt={c.instructor?.name || 'Instructor'} className="w-8 h-8 rounded-full object-cover" />
+                          <div>
+                            <div className="text-xs text-gray-800">{c.instructor?.name || 'iDriva'}</div>
+                            <div className="text-xs text-gray-500">{c.created_at ? new Date(c.created_at).toLocaleDateString() : ''}</div>
+                          </div>
+                        </div>
+                        <div className="text-right text-sm font-semibold text-gray-900 flex items-center gap-1">
+                          <span>{c.price && c.price>0 ? `₦${Number(c.price).toLocaleString()}` : 'Free'}</span>
                         </div>
                       </div>
 
-                      {/* Content */}
-                      <div className="p-4 flex-1 flex flex-col">
-                        <h3 className="text-lg font-medium text-gray-900 line-clamp-2">{c.title}</h3>
-                        <p className="text-sm text-gray-600 mt-2 line-clamp-3">{c.description}</p>
-
-                        {/* Instructor + Price */}
-                        <div className="mt-4 flex items-center justify-between text-sm text-gray-500">
-                          <div className="flex items-center gap-3">
-                            <img
-                              src={c.instructor?.avatar && c.instructor?.avatar.trim() !== '' ? c.instructor.avatar : '/avatar.png'}
-                              alt={c.instructor?.name || 'Instructor'}
-                              className="w-8 h-8 rounded-full object-cover"
-                            />
-                            <div>
-                              <div className="text-xs text-gray-800">{c.instructor?.name || 'iDriva'}</div>
-                              <div className="text-xs text-gray-500">
-                                {c.created_at ? new Date(c.created_at).toLocaleDateString() : ''}
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="text-right">
-                            <div className="text-sm font-semibold text-gray-900 flex items-center gap-1">
-                              <span>
-                                {Number(c.price) && Number(c.price) > 0
-                                  ? `₦${Number(c.price).toLocaleString()}`
-                                  : 'Free'}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Actions */}
-                        <div className="mt-4">
-                          {c.enrolled ? (
-                            <button
-                              onClick={() => startCourse(c)}
-                              className="w-full inline-flex justify-center items-center gap-2 px-4 py-2 bg-[#0A66C2] hover:bg-[#004182] text-white rounded-md text-sm"
-                            >
-                              <PlayIcon className="w-4 h-4" />
-                              Continue Learning
-                            </button>
-                          ) : (
-                            <button
-                              onClick={() => selectCourse(c)}
-                              className="w-full inline-flex justify-center items-center gap-2 px-4 py-2 bg-[#0A66C2] hover:bg-[#004182] text-white rounded-md text-sm"
-                            >
-                              Enroll
-                            </button>
-                          )}
-                        </div>
-
-                        {/* Copy link + tags */}
-                        <div className="mt-3 flex items-center justify-between">
-                          <button
-                            onClick={() =>
-                              navigator.clipboard?.writeText(`${location.origin}/dashboard/learning/${c.id}`)
-                            }
-                            className="text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1"
-                            title="Copy link"
-                          >
-                            <BookmarkIcon className="w-4 h-4" />
-                          </button>
-
-                          {c.tags?.length ? (
-                            <div className="flex flex-wrap gap-2">
-                              {c.tags.slice(0, 4).map((t) => (
-                                <span key={t} className="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded-full">
-                                  {t}
-                                </span>
-                              ))}
-                            </div>
-                          ) : null}
-                        </div>
+                      <div className="mt-4">
+                        <button
+                          onClick={() => handleEnrollOrStart(c)}
+                          className="w-full inline-flex justify-center items-center gap-2 px-4 py-2 bg-[#0A66C2] hover:bg-[#004182] text-white rounded-md text-sm"
+                        >
+                          <PlayIcon className="w-4 h-4" />{c.enrolled ? 'Continue Learning' : 'Enroll & Start'}
+                        </button>
                       </div>
-                    </article>
-                  ))}
-                </div>
-
-                <div className="mt-6 text-sm text-gray-500 flex items-center gap-2">
-                  <UserGroupIcon className="w-4 h-4 text-gray-400" />
-                  Join cohorts, track progress, and get certified by completing courses.
-                </div>
-              </>
+                    </div>
+                  </article>
+                ))}
+              </div>
             )}
+
+            <div className="mt-6 text-sm text-gray-500 flex items-center gap-2">
+              <UserGroupIcon className="w-4 h-4 text-gray-400" />
+              Join cohorts, track progress, and get certified by completing courses.
+            </div>
           </main>
 
           <aside className="w-[320px] hidden xl:block sticky top-16 h-[calc(100vh-4rem)] overflow-y-auto">
