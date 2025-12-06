@@ -1,7 +1,7 @@
 'use client';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
@@ -22,6 +22,7 @@ import {
   faBell
 } from '@fortawesome/free-solid-svg-icons';
 import api from '@/lib/api';
+import { listenToProfileUpdate } from '@/utils/events';
 
 interface User {
   id: string;
@@ -29,6 +30,7 @@ interface User {
   lastName: string;
   role: string;
   profile_picture?: string;
+  profileImage?: string;
 }
 
 interface SearchResult {
@@ -45,20 +47,100 @@ export default function HeaderLoggedIn() {
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false); // Add a separate state for refreshing
   const router = useRouter();
   const dropdownRef = useRef<HTMLDivElement>(null);
-    const [searchOpen, setSearchOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
-
   const searchRef = useRef<HTMLDivElement>(null);
-
   const [unreadCount, setUnreadCount] = useState(0);
+  const [error, setError] = useState('');
 
+  // Create a reusable fetchUserData function
+  const fetchUserData = useCallback(async () => {
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/user`, {
+        credentials: 'include'
+      });
+      
+      if (response.ok) {
+        const userData = await response.json();
+        console.log('User data fetched:', userData);
+        
+        const userObj: User = {
+          id: userData.user?.id || '1',
+          firstName: userData.user?.full_name?.split(" ")[0] || 'First Name',
+          lastName: userData.user?.full_name?.split(" ").slice(1).join(" ") || 'Last Name',
+          otherNames: userData.user?.full_name?.split(" ").slice(2).join(" ") || '',
+          role: userData.user?.role || 'Driver',
+          email: userData.user?.email || '',
+          phoneNumber: userData.user?.phoneNumber || '',
+          profileImage: userData.profile?.profileImage || null,
+          coverImage: userData.profile?.coverImage || null,
+          followersCount: userData.followersCount,
+          followingCount: userData.followingCount,
+          suggestedUsers: userData.suggestedUsers,
+          unreadCount: userData.unreadCount,
+          isFollowing: userData.isFollowing
+        };
+        
+        setUser(userObj);
+        localStorage.setItem('user', JSON.stringify(userObj));
+        return true;
+      } else {
+        console.error('API failed with status:', response.status);
+        
+        // Fallback to localStorage if API fails
+        const storedUser = localStorage.getItem('user');
+        if (storedUser) {
+          setUser(JSON.parse(storedUser));
+        } else {
+          // Create a minimal fallback user
+          setUser({
+            id: 'fallback-1',
+            firstName: 'User',
+            lastName: 'User',
+            role: 'Driver',
+            email: '',
+            phoneNumber: ''
+          });
+        }
+        return false;
+      }
+    } catch (error) {
+      console.error('Error fetching user:', error);
+      setError('Network error fetching user data');
+      
+      // Fallback to localStorage on network error
+      const storedUser = localStorage.getItem('user');
+      if (storedUser) {
+        setUser(JSON.parse(storedUser));
+      }
+      return false;
+    }
+  }, []);
 
+  // Initial fetch on component mount
   useEffect(() => {
-    // Check for saved theme preference or default to system preference
+    const fetchInitialData = async () => {
+      try {
+        setLoading(true);
+        await fetchUserData();
+      } catch (error) {
+        console.error('Error fetching data:', error);
+        setError('Failed to load user data');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchInitialData();
+  }, [fetchUserData]);
+
+  // Theme effect
+  useEffect(() => {
     const savedTheme = localStorage.getItem('theme');
     const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
     
@@ -69,27 +151,33 @@ export default function HeaderLoggedIn() {
       setDark(false);
       document.documentElement.classList.remove('dark');
     }
-    
-    // Get user data from localStorage
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      try {
-        const userData = JSON.parse(storedUser);
-        setUser({
-          id: userData.id || '',
-          firstName: userData.firstName || '',
-          lastName: userData.lastName || '',
-          role: userData.role || '',
-          profile_picture: userData.profile_picture || '/avatar.png'
-        });
-      } catch (error) {
-        console.error('Error parsing user data:', error);
-      }
-    }
-    setLoading(false);
   }, []);
 
- // Toggle dark mode
+  // Event listener for profile updates
+  useEffect(() => {
+    const handleProfileUpdate = async () => {
+      console.log('Profile updated event received, refreshing user data...');
+      setRefreshing(true); // Use refreshing state instead of loading
+      try {
+        await fetchUserData();
+        console.log('User data refreshed successfully');
+      } catch (error) {
+        console.error('Error refreshing user data:', error);
+      } finally {
+        setRefreshing(false);
+      }
+    };
+    
+    // Subscribe to profile update events
+    const unsubscribe = listenToProfileUpdate(handleProfileUpdate);
+    
+    // Cleanup on unmount
+    return () => {
+      unsubscribe();
+    };
+  }, [fetchUserData]);
+
+  // Toggle dark mode
   const toggleDarkMode = () => {
     const newDarkMode = !dark;
     setDark(newDarkMode);
@@ -170,46 +258,24 @@ export default function HeaderLoggedIn() {
 
     setSearchResults(staticResults);
     setSearchLoading(false);
-
-    // API ENDPOINT IMPLEMENTATION - Uncomment when endpoint is ready
-    /*
-    try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/search?q=${encodeURIComponent(query)}`, {
-        credentials: 'include'
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setSearchResults(data.results || []);
-      } else {
-        setSearchResults([]);
-      }
-    } catch (error) {
-      console.error('Search failed:', error);
-      setSearchResults([]);
-    } finally {
-      setSearchLoading(false);
-    }
-    */
   };
 
   useEffect(() => {
-  const fetchUnreadCount = async () => {
-    try {
-      const response = await api.get('/notifications/unread-count');
-      if (response.data.success) {
-        setUnreadCount(response.data.data.count);
+    const fetchUnreadCount = async () => {
+      try {
+        const response = await api.get('/notifications/unread-count');
+        if (response.data.success) {
+          setUnreadCount(response.data.data.count);
+        }
+      } catch (error) {
+        console.error('Error fetching unread count:', error);
       }
-    } catch (error) {
-      console.error('Error fetching unread count:', error);
-    }
-  };
+    };
 
     fetchUnreadCount();
-  // Poll for new notifications every 30 seconds
-  const interval = setInterval(fetchUnreadCount, 30000);
-  return () => clearInterval(interval);
-}, []);
+    const interval = setInterval(fetchUnreadCount, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleLogout = () => {
     localStorage.removeItem('user');
@@ -225,7 +291,6 @@ export default function HeaderLoggedIn() {
       { href: '/dashboard', icon: faHouse, label: 'Home' },
       { href: '/dashboard/driver/jobs', icon: faBriefcase, label: 'Jobs' },
       { href: '/dashboard/learning', icon: faBook, label: 'Learning' },
-      // { href: '/certifications', icon: faCertificate, label: 'Certifications' },
       { href: '#', icon: faComments, label: 'Messages' },
     ],
     Instructor: [
@@ -254,6 +319,7 @@ export default function HeaderLoggedIn() {
     ? roleBasedMenus[user.role as keyof typeof roleBasedMenus]
     : roleBasedMenus.Driver;
 
+  // Show loading only on initial load, not during refreshes
   if (loading) {
     return (
       <nav className="fixed top-0 left-0 right-0 z-50 bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 px-4 sm:px-6 py-3 flex justify-between items-center">
@@ -277,7 +343,7 @@ export default function HeaderLoggedIn() {
           <Link href="/">
             <Image src="/logo.png" alt="iDriva Logo" width={100} height={32} />
           </Link>
-           <div className="relative ml-4 hidden lg:block" ref={searchRef}>
+          <div className="relative ml-4 hidden lg:block" ref={searchRef}>
             <div className="relative">
               <input 
                 type="text" 
@@ -367,7 +433,6 @@ export default function HeaderLoggedIn() {
             </Link>
           ))}
 
-
           {/* Dark Mode Toggle */}
           <button 
             onClick={toggleDarkMode}
@@ -381,13 +446,14 @@ export default function HeaderLoggedIn() {
           </button>
 
           <Link href="/dashboard/notifications" className="relative">
-  <FontAwesomeIcon icon={faBell} className="text-xl" />
-  {unreadCount > 0 && (
-    <span className="absolute -top-1 -right-1 bg-red-600 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-      {unreadCount > 9 ? '9+' : unreadCount}
-    </span>
-  )}
-</Link>
+            <FontAwesomeIcon icon={faBell} className="text-xl" />
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 bg-red-600 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
+          </Link>
+          
           {/* User Profile with Dropdown */}
           {user && (
             <div 
@@ -398,13 +464,24 @@ export default function HeaderLoggedIn() {
                 onClick={() => setUserDropdownOpen(!userDropdownOpen)}
                 className="flex items-center space-x-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full px-2 py-1 transition-colors"
               >
-                <Image
-                  src={user.profile_picture || '/avatar.png'}
-                  alt="Profile"
-                  width={32}
-                  height={32}
-                  className="h-8 w-8 rounded-full border border-blue-700"
-                />
+                <div className="relative">
+                  <Image
+                    src={`${process.env.NEXT_PUBLIC_FILE_URL}/${user.profileImage || '/avatar.png'}`}
+                    alt="Profile"
+                    width={32}
+                    height={32}
+                    className="h-8 w-8 rounded-full border border-blue-700"
+                    onError={(e) => {
+                      e.currentTarget.src = '/avatar.png';
+                    }}
+                  />
+                  {/* Refresh indicator */}
+                  {refreshing && (
+                    <div className="absolute -top-1 -right-1 bg-blue-500 text-white rounded-full w-4 h-4 flex items-center justify-center">
+                      <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    </div>
+                  )}
+                </div>
                 <span className="text-gray-700 dark:text-gray-300 font-medium">
                   {fullName}
                 </span>
@@ -494,13 +571,23 @@ export default function HeaderLoggedIn() {
             {/* User Profile Mobile */}
             {user && (
               <div className="flex items-center space-x-2 mt-2 pt-2 border-t border-gray-200 dark:border-gray-700 py-3">
-                <Image
-                  src={user.profile_picture || '/avatar.png'}
-                  alt="Avatar"
-                  width={32}
-                  height={32}
-                  className="h-8 w-8 rounded-full border border-blue-700"
-                />
+                <div className="relative">
+                  <Image
+                    src={user.profileImage ? `${process.env.NEXT_PUBLIC_FILE_URL}/${user.profileImage}` : '/avatar.png'}
+                    alt="Avatar"
+                    width={32}
+                    height={32}
+                    className="h-8 w-8 rounded-full border border-blue-700"
+                    onError={(e) => {
+                      e.currentTarget.src = '/avatar.png';
+                    }}
+                  />
+                  {refreshing && (
+                    <div className="absolute -top-1 -right-1 bg-blue-500 text-white rounded-full w-4 h-4 flex items-center justify-center">
+                      <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    </div>
+                  )}
+                </div>
                 <span className="text-gray-700 dark:text-gray-300 font-medium">
                   {fullName}
                 </span>

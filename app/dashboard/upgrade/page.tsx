@@ -97,7 +97,7 @@ export default function SubscriptionPage() {
     {
       id: 'basic',
       name: 'Pathfinder',
-      price: 9.99,
+      price: 5000,
       billing: 'per month',
       description: 'Level up your career journey with essential tools',
       icon: <Rocket className="w-8 h-8" />,
@@ -120,7 +120,7 @@ export default function SubscriptionPage() {
     {
       id: 'gold',
       name: 'Trailblazer',
-      price: 24.99,
+      price: 11000,
       billing: 'per month',
       description: 'Stand out from the crowd with premium features',
       icon: <Crown className="w-8 h-8" />,
@@ -142,7 +142,7 @@ export default function SubscriptionPage() {
     {
       id: 'premium',
       name: 'Visionary',
-      price: 49.99,
+      price: 18000,
       billing: 'per month',
       description: 'Unlock the full potential of your professional network',
       icon: <Sparkles className="w-8 h-8" />,
@@ -359,7 +359,7 @@ export default function SubscriptionPage() {
                     </div>
                     <h3 className="text-2xl font-bold mb-2">{plan.name}</h3>
                     <div className="mb-2">
-                      <span className="text-3xl font-bold">${plan.price}</span>
+                      <span className="text-3xl font-bold">N{plan.price}</span>
                       <span className="text-gray-500 dark:text-gray-400 ml-2">/{plan.billing}</span>
                     </div>
                     <p className="text-gray-600 dark:text-gray-400 text-sm">{plan.description}</p>

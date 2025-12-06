@@ -10,12 +10,29 @@ import api from '@/lib/api';
 import ChatComponent from "@/components/ChatComponent";
 import ChatButton from "@/components/ChatButton";
 
+// interface User {
+//   id: string;
+//   firstName: string;
+//   lastName: string;
+//   role: string;
+//   profile_picture?: string;
+// }
+
 interface User {
   id: string;
   firstName: string;
   lastName: string;
+  otherNames?: string;
   role: string;
-  profile_picture?: string;
+  profileImage?: string | null; // Changed from profile_picture to profileImage
+  coverImage?: string | null;
+  email: string;
+  phoneNumber: string;
+  followersCount?: number;
+  followingCount?: number;
+  suggestedUsers?: any[];
+  unreadCount?: number;
+  isFollowing?: boolean;
 }
 
 interface PostUser {
@@ -157,21 +174,106 @@ export default function FeedPage() {
   
 
   // Fetch user data and posts
+  // useEffect(() => {
+  //   const fetchData = async () => {
+  //     try {
+  //       setLoading(true);
+        
+  //       const storedUser = localStorage.getItem('user');
+  //       if (storedUser) {
+  //         const userData: User = JSON.parse(storedUser);
+  //         setUser(userData);
+  //       } else {
+  //         window.location.href = '/auth/login';
+  //         return;
+  //       }
+
+  //       await fetchFeed();
+        
+  //     } catch (error) {
+  //       console.error('Error fetching data:', error);
+  //       setError('Failed to load feed');
+  //     } finally {
+  //       setLoading(false);
+  //     }
+  //   };
+
+  //   fetchData();
+  // }, []);
+
+
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
         
-        const storedUser = localStorage.getItem('user');
-        if (storedUser) {
-          const userData: User = JSON.parse(storedUser);
-          setUser(userData);
-        } else {
-          window.location.href = '/auth/login';
-          return;
-        }
+        // Fetch user data from API
+        const fetchUserData = async () => {
+          try {
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/user`, {
+              credentials: 'include'
+            });
+            
+            if (response.ok) {
+              const userData = await response.json();
+              console.log('User data:', userData);
 
-        await fetchFeed();
+              const userObj: User = {
+                id: userData.user?.id || '1',
+                firstName: userData.user?.full_name?.split(" ")[0] || 'First Name',
+                lastName: userData.user?.full_name?.split(" ").slice(1).join(" ") || 'Last Name',
+                otherNames: userData.user?.full_name?.split(" ").slice(2).join(" ") || '',
+                role: userData.user?.role || 'Driver',
+                email: userData.user?.email || '',
+                phoneNumber: userData.user?.phoneNumber || '',
+                profileImage: userData.profile?.profileImage || null,
+                coverImage: userData.profile?.coverImage || null,
+                followersCount: userData.followersCount,
+                followingCount: userData.followingCount,
+                suggestedUsers: userData.suggestedUsers,
+                unreadCount: userData.unreadCount,
+                isFollowing: userData.isFollowing
+              };
+              
+              setUser(userObj);
+              // Optionally store in localStorage for other components
+              localStorage.setItem('user', JSON.stringify(userObj));
+            } else {
+              console.error('API failed with status:', response.status);
+              
+              // Fallback to localStorage if API fails
+              const storedUser = localStorage.getItem('user');
+              if (storedUser) {
+                setUser(JSON.parse(storedUser));
+              } else {
+                // Create a minimal fallback user
+                setUser({
+                  id: 'fallback-1',
+                  firstName: 'User',
+                  lastName: 'User',
+                  role: 'Driver',
+                  email: '',
+                  phoneNumber: ''
+                });
+              }
+            }
+          } catch (error) {
+            console.error('Error fetching user:', error);
+            setError('Network error fetching user data');
+            
+            // Fallback to localStorage on network error
+            const storedUser = localStorage.getItem('user');
+            if (storedUser) {
+              setUser(JSON.parse(storedUser));
+            }
+          }
+        };
+
+        // Fetch both user data and feed data in parallel
+        await Promise.all([
+          fetchUserData(),
+          fetchFeed()
+        ]);
         
       } catch (error) {
         console.error('Error fetching data:', error);
@@ -183,6 +285,7 @@ export default function FeedPage() {
 
     fetchData();
   }, []);
+
 
   // Auto-refresh posts every 30 seconds
   useEffect(() => {
@@ -225,7 +328,7 @@ export default function FeedPage() {
             postId: post.postId,
             type: "post",
             authorName: `${post.user.firstName} ${post.user.lastName} ${post.user.otherNames || ''}`.trim(),
-            authorAvatar: post.user.avatar || '/avatar.png',
+            authorAvatar: post.user.profileImage || '/avatar.png',
             created_at: post.created_at,
             content: post.body,
             image_url: post.uploadUrl ? `${process.env.NEXT_PUBLIC_FILE_URL}${post.uploadUrl}` : null,
@@ -694,7 +797,14 @@ const handleOpenChat = (userId?: string, userData?: ChatUser) => {
 
             {user && (
               <CreatePostBox 
-                user={user} 
+                // user={user} 
+                user={{
+                id: user.id,
+                firstName: user.firstName,
+                lastName: user.lastName,
+                role: user.role,
+                profile_picture: user.profileImage || undefined // Map profileImage to profile_picture
+              }}
                 onPostCreated={addNewPost} 
                 onError={setError}
               />
@@ -730,7 +840,14 @@ const handleOpenChat = (userId?: string, userData?: ChatUser) => {
                   <FeedPost 
                     key={item.id} 
                     post={item} 
-                    user={user} 
+                    // user={user} 
+                    user={{
+                id: user.id,
+                firstName: user.firstName,
+                lastName: user.lastName,
+                role: user.role,
+                profile_picture: user.profileImage || undefined // Map profileImage to profile_picture
+              }}
                     onLike={handleLike}
                     onShare={handleShare}
                     onComment={handleComment}

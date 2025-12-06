@@ -8,6 +8,7 @@ import {
   faPaperPlane
 } from '@fortawesome/free-solid-svg-icons';
 import api from '@/lib/api';
+import Image from 'next/image';
 
 interface User {
   id: string;
@@ -19,7 +20,7 @@ interface User {
 
 interface CreatePostBoxProps {
   user: User;
-  onPostCreated: (post: Post) => void;
+  onPostCreated: (post: any) => void; // Changed from Post to any or define Post interface
   onError: (error: string) => void;
 }
 
@@ -50,7 +51,7 @@ export default function CreatePostBox({ user, onPostCreated, onError }: CreatePo
     setSelectedFile(f);
   }
 
- const handleSubmit = async () => {
+  const handleSubmit = async () => {
     if (!text.trim()) {
       onError('Please enter some text for your post.');
       return;
@@ -111,11 +112,23 @@ export default function CreatePostBox({ user, onPostCreated, onError }: CreatePo
     }
   };
 
-  
   return (
     <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm">
       <div className="flex items-start space-x-3">
-        <img src="/avatar.png" className="w-12 h-12 rounded-full object-cover" alt="User" />
+<Image
+  src={
+    user?.profile_picture 
+      ? `${process.env.NEXT_PUBLIC_FILE_URL}/${user.profile_picture}`
+      : '/avatar.png'
+  }
+  alt={`${user.firstName} ${user.lastName}'s profile picture`}
+  width={48}
+  height={48}
+  className="w-12 h-12 rounded-full object-cover"
+  onError={(e) => {
+    e.currentTarget.src = '/avatar.png';
+  }}
+/>
         <textarea 
           value={text} 
           onChange={(e) => {

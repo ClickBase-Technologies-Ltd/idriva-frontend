@@ -77,7 +77,7 @@ export default function Sidebar() {
   const [isAuthenticated, setIsAuthenticated] = useState(null);
   const [name, setName] = useState('');
   const [role, setRole] = useState('');
-
+  
   // Fetch main user data
   useEffect(() => {
     const fetchUserData = async () => {
@@ -291,7 +291,7 @@ export default function Sidebar() {
 
   // Role-based navigation items (same as before)
   const roleBasedNavItems = {
-    Driver: [
+     Driver: [
       { href: '/dashboard', icon: faTachometerAlt, label: 'Dashboard' },
       { href: '/dashboard/profile', icon: faUser, label: 'Profile' },
       { href: '/dashboard/followers?type=following', icon: faUsers, label: 'Following' },
@@ -301,7 +301,7 @@ export default function Sidebar() {
       // { href: '/certifications', icon: faAward, label: 'Certifications' },
       { href: '/dashboard/driver/jobs', icon: faBriefcase, label: 'Job Board' },
       { href: '/dashboard/notifications', icon: faBell, label: 'Notifications' },
-      { href: '/dashboard/settings', icon: faCog, label: 'Settings' },
+      // { href: '/dashboard/settings', icon: faCog, label: 'Settings' },
       { href: '/dashboard/help', icon: faQuestionCircle, label: 'Help Center' },
     ],
     Recruiter: [
@@ -312,18 +312,18 @@ export default function Sidebar() {
       { href: '/dashboard/recruiter/jobs', icon: faBriefcase, label: 'Job Posts' },
       { href: '/dashboard/recruiter/applications', icon: faFileAlt, label: 'Applications' },
       { href: '/dashboard/notifications', icon: faBell, label: 'Notifications' },
-      { href: '/dashboard/settings', icon: faCog, label: 'Settings' },
+      // { href: '/dashboard/settings', icon: faCog, label: 'Settings' },
     ],
     Instructor: [
       { href: '/instructor/dashboard', icon: faTachometerAlt, label: 'Learning Dashboard' },
       { href: '/instructor/my-courses', icon: faBook, label: 'My Courses' },
       { href: '/instructor/courses/create', icon: faPlus, label: 'Create Course' },
       { href: '/instructor/modules/create', icon: faFileAlt, label: 'Create Module' },
-      { href: '/instructor/enrollments', icon: faUserCheck, label: 'Enrollments' },
-      { href: '/instructor/students', icon: faUsers, label: 'Students' },
-      { href: '/instructor/analytics', icon: faChartLine, label: 'Analytics' },
-      { href: '/instructor/schedule', icon: faCalendarAlt, label: 'Schedule' },
-      { href: '/instructor/settings', icon: faCog, label: 'Settings' },
+      // { href: '/instructor/enrollments', icon: faUserCheck, label: 'Enrollments' },
+      // { href: '/instructor/students', icon: faUsers, label: 'Students' },
+      // { href: '/instructor/analytics', icon: faChartLine, label: 'Analytics' },
+      // { href: '/instructor/schedule', icon: faCalendarAlt, label: 'Schedule' },
+      // { href: '/instructor/settings', icon: faCog, label: 'Settings' },
     ],
   };
 
@@ -383,6 +383,7 @@ export default function Sidebar() {
         }`}
       >
         {/* Cover + Profile */}
+        
         <div className="relative">
           <Image
             src={
@@ -409,6 +410,9 @@ export default function Sidebar() {
               width={64}
               height={64}
               className="w-16 h-16 rounded-full border-4 border-white dark:border-gray-900 object-cover"
+               onError={(e) => {
+              e.currentTarget.src = '/avatar.png';
+            }}
             />
           </div>
         </div>

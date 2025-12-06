@@ -8,6 +8,7 @@ import api from '@/lib/api';
 import Image from 'next/image';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faEdit, faTrash, faPlus, faSpinner, faUpload, faCheck, faTimes } from '@fortawesome/free-solid-svg-icons';
+import { dispatchProfileUpdate } from '@/utils/events';
 
 interface User {
   id?: string;
@@ -336,6 +337,7 @@ export default function ProfilePage() {
           setUser(updatedUser);
         }
         await refreshProfileData();
+        dispatchProfileUpdate();
         setTimeout(() => setSuccess(''), 3000);
       }
     } catch (error: any) {
@@ -407,7 +409,7 @@ export default function ProfilePage() {
           const updatedUser = { ...user, coverImage: coverImageUrl };
           setUser(updatedUser);
         }
-       
+       await refreshProfileData();
         setTimeout(() => setSuccess(''), 3000);
       }
     } catch (error: any) {

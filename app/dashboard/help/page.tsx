@@ -333,7 +333,7 @@ export default function HelpCenterPage() {
           {/* MAIN CONTENT */}
           <main className="flex-1 space-y-6 mt-6 max-h-[calc(100vh-4rem)] overflow-y-auto scrollbar-hide">
             {/* Header */}
-            <div className="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-xl p-6 md:p-8 text-white">
+            <div className="bg-[#0A66C2] rounded-xl p-6 md:p-8 text-white">
               <div className="flex flex-col md:flex-row md:items-center justify-between">
                 <div>
                   <h1 className="text-2xl md:text-3xl font-bold mb-2">Help Center</h1>
@@ -1005,7 +1005,7 @@ const mockArticles: HelpArticle[] = [
     created_at: '2024-01-15T10:30:00Z',
     updated_at: '2024-01-15T10:30:00Z',
     author: {
-      name: 'Sarah Johnson',
+      name: 'Sarah Adeyemi',
       role: 'Career Coach'
     }
   },
@@ -1018,7 +1018,7 @@ const mockArticles: HelpArticle[] = [
     created_at: '2024-01-10T14:20:00Z',
     updated_at: '2024-01-10T14:20:00Z',
     author: {
-      name: 'Michael Chen',
+      name: 'Michael Daniel',
       role: 'HR Manager'
     }
   },
@@ -1031,7 +1031,7 @@ const mockArticles: HelpArticle[] = [
     created_at: '2024-01-05T09:15:00Z',
     updated_at: '2024-01-05T09:15:00Z',
     author: {
-      name: 'Dr. Emily Wilson',
+      name: 'Dr. Nicholas Ugwu',
       role: 'Learning Specialist'
     }
   }
