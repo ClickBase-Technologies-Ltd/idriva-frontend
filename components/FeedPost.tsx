@@ -18,7 +18,8 @@ import {
   faChevronDown,
   faEye,
   faEyeSlash,
-  faUserFriends
+  faUserFriends,
+  faCheck // Add this import
 } from '@fortawesome/free-solid-svg-icons';
 import { faHeart as faHeartRegular } from '@fortawesome/free-regular-svg-icons';
 import Image from 'next/image';
@@ -70,22 +71,18 @@ export default function FeedPost({ post, user, onLike, onShare, onComment, onDel
   useEffect(() => {
     const fetchPostAuthorInfo = async () => {
       if (!user || !post.user?.id) return;
-
       
       try {
-        // Fetch author role
+        // Fetch author role and follow status in one call
         const authorResponse = await api.get(`/users/${post.user.id}/profile`);
         if (authorResponse.status === 200) {
           const authorData = authorResponse.data;
           setPostAuthorRole(authorData.role || authorData.user?.role || 'Member');
           
-          // Check follow status if it's not the current user
-          if (user.id !== post.user.id) {
-    const followResponse = await api.get(`/users/${post.user.id}/follow-status`);
-
-            if (followResponse.status === 200 || followResponse.status === 201) {
-              setIsFollowing(followResponse.data.isFollowing || false);
-            }
+          // Set follow status from the profile endpoint response
+          // Only set if it's not the current user
+          if (user.id !== post.user.id && typeof authorData.isFollowing !== 'undefined') {
+            setIsFollowing(authorData.isFollowing || false);
           }
         }
       } catch (error) {
@@ -94,7 +91,7 @@ export default function FeedPost({ post, user, onLike, onShare, onComment, onDel
     };
     
     fetchPostAuthorInfo();
-  }, [user, post.user?.userId]);
+  }, [user, post.user?.id]);
 
   // Close menus when clicking outside
   useEffect(() => {
@@ -135,18 +132,9 @@ export default function FeedPost({ post, user, onLike, onShare, onComment, onDel
       return;
     }
     
-    if (commentPrivacy === 'followers' && user.id !== post.user.id) {
-      // Check if user follows the post author
-      try {
-        const followResponse = await api.get(`/users/${post.user.id}/follow-status`);
-        if (!followResponse.data.isFollowing) {
-          alert('Only followers can comment on this post.');
-          return;
-        }
-      } catch (error) {
-        console.error('Error checking follow status:', error);
-        return;
-      }
+    if (commentPrivacy === 'followers' && user.id !== post.user.id && !isFollowing) {
+      alert('Only followers can comment on this post.');
+      return;
     }
 
     setIsSubmittingComment(true);
@@ -160,27 +148,38 @@ export default function FeedPost({ post, user, onLike, onShare, onComment, onDel
     }
   };
 
-  const handleFollow = async () => {
-    if (!user || !post.user?.userId || user.id === post.user.id) return;
+  const handleFollow = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    console.log('Follow button clicked');
+    console.log('Current user:', user?.id);
+    console.log('Post author:', post.user?.id);
+    console.log('Current follow status:', isFollowing);
+    
+    if (!user || !post.user?.id || user.id === post.user.id) {
+      console.log('Cannot follow:', !user ? 'No user' : !post.user?.id ? 'No post author' : 'Cannot follow yourself');
+      return;
+    }
     
     setIsFollowingLoading(true);
     try {
       if (isFollowing) {
-        // Unfollow
+        console.log('Unfollowing user:', post.user.id);
         await api.post(`/users/${post.user.id}/unfollow`);
         setIsFollowing(false);
-        // You might want to update local state or refresh data here
       } else {
-        // Follow
+        console.log('Following user:', post.user.id);
         await api.post(`/users/${post.user.id}/follow`);
         setIsFollowing(true);
-        // You might want to update local state or refresh data here
       }
     } catch (error: any) {
       console.error('Error toggling follow:', error);
-      // Check for specific error responses
-      if (error.response?.data?.message) {
-        console.error('API Error:', error.response.data.message);
+      if (error.response) {
+        console.error('Response status:', error.response.status);
+        console.error('Response data:', error.response.data);
+        alert(`Error: ${error.response.data.message || 'Something went wrong'}`);
+      } else {
+        alert('Network error. Please check your connection.');
       }
     } finally {
       setIsFollowingLoading(false);
@@ -283,13 +282,11 @@ export default function FeedPost({ post, user, onLike, onShare, onComment, onDel
     }
   };
 
-  // Don't show follow button if user is viewing their own post
-  // const showFollowButton = user && post.user?.userId && user.id !== post.user.id;
+  // Show follow button only if user is not the post author
   const showFollowButton = user && post.user && user.id !== post.user.id;
 
-
   // Check if current user is the post author (for privacy controls)
-  const isPostAuthor = user && post.user?.userId && user.id === post.user.id;
+  const isPostAuthor = user && post.user && user.id === post.user.id;
 
   // Render post based on privacy
   if (!canViewPost()) {

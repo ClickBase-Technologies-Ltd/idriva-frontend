@@ -363,7 +363,8 @@ export default function FeedPage() {
         jobStatus: job.jobStatus,
         companyName: job.company.companyName,
         companyLogo: job.company.companyLogo,
-        jobId: job.jobId
+        jobId: job.jobId,
+        applicationStatus: job.applicationStatus
       }));
 
       // Combine and sort by creation date (newest first)
