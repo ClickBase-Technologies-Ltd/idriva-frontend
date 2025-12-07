@@ -30,7 +30,7 @@ interface FeedPostProps {
   user: any; // This is the logged-in user
   onLike: (postId: number, currentlyLiked: boolean) => void;
   onShare: (postId: number) => void;
-  onComment: (postId: number, commentContent: string) => void;
+  onComment: (postId: number, commentContent: string) => Promise<any>;
   onDeleteComment: (postId: number, postCommentId: number) => void;
   onShowModal: (type: 'likes' | 'comments' | 'shares', postId: number) => void;
 }
@@ -39,7 +39,8 @@ interface FeedPostProps {
 type PostPrivacy = 'public' | 'followers' | 'private';
 type CommentPrivacy = 'everyone' | 'followers' | 'none';
 
-export default function FeedPost({ post, user, onLike, onShare, onComment, onDeleteComment, onShowModal }: FeedPostProps) {
+export default function FeedPost({ post: initialPost, user, onLike, onShare, onComment, onDeleteComment, onShowModal }: FeedPostProps) {
+  const [localPost, setLocalPost] = useState(initialPost);
   const [showComments, setShowComments] = useState(false);
   const [commentText, setCommentText] = useState('');
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
@@ -47,14 +48,21 @@ export default function FeedPost({ post, user, onLike, onShare, onComment, onDel
   const [isFollowingLoading, setIsFollowingLoading] = useState(false);
   const [showFullContent, setShowFullContent] = useState(false);
   const [isContentTruncated, setIsContentTruncated] = useState(false);
-  const [postPrivacy, setPostPrivacy] = useState<PostPrivacy>(post.privacy || 'public');
-  const [commentPrivacy, setCommentPrivacy] = useState<CommentPrivacy>(post.commentPrivacy || 'everyone');
+  const [postPrivacy, setPostPrivacy] = useState<PostPrivacy>(initialPost.privacy || 'public');
+  const [commentPrivacy, setCommentPrivacy] = useState<CommentPrivacy>(initialPost.commentPrivacy || 'everyone');
   const [showPrivacyMenu, setShowPrivacyMenu] = useState(false);
   const [showSettingsMenu, setShowSettingsMenu] = useState(false);
   const [postAuthorRole, setPostAuthorRole] = useState<string>('');
   const contentRef = useRef<HTMLParagraphElement>(null);
   const privacyMenuRef = useRef<HTMLDivElement>(null);
   const settingsMenuRef = useRef<HTMLDivElement>(null);
+
+  // Update localPost when initialPost changes
+  useEffect(() => {
+    setLocalPost(initialPost);
+    setPostPrivacy(initialPost.privacy || 'public');
+    setCommentPrivacy(initialPost.commentPrivacy || 'everyone');
+  }, [initialPost]);
 
   // Check if content needs truncation
   useEffect(() => {
@@ -65,23 +73,23 @@ export default function FeedPost({ post, user, onLike, onShare, onComment, onDel
       
       setIsContentTruncated(contentHeight > maxHeight);
     }
-  }, [post.content]);
+  }, [localPost.content]);
 
   // Fetch post author role and follow status
   useEffect(() => {
     const fetchPostAuthorInfo = async () => {
-      if (!user || !post.user?.id) return;
+      if (!user || !localPost.user?.id) return;
       
       try {
         // Fetch author role and follow status in one call
-        const authorResponse = await api.get(`/users/${post.user.id}/profile`);
+        const authorResponse = await api.get(`/users/${localPost.user.id}/profile`);
         if (authorResponse.status === 200) {
           const authorData = authorResponse.data;
           setPostAuthorRole(authorData.role || authorData.user?.role || 'Member');
           
           // Set follow status from the profile endpoint response
           // Only set if it's not the current user
-          if (user.id !== post.user.id && typeof authorData.isFollowing !== 'undefined') {
+          if (user.id !== localPost.user.id && typeof authorData.isFollowing !== 'undefined') {
             setIsFollowing(authorData.isFollowing || false);
           }
         }
@@ -91,7 +99,7 @@ export default function FeedPost({ post, user, onLike, onShare, onComment, onDel
     };
     
     fetchPostAuthorInfo();
-  }, [user, post.user?.id]);
+  }, [user, localPost.user?.id]);
 
   // Close menus when clicking outside
   useEffect(() => {
@@ -111,11 +119,17 @@ export default function FeedPost({ post, user, onLike, onShare, onComment, onDel
   }, []);
 
   const handleLike = () => {
-    onLike(post.postId, post.isLiked);
+    onLike(localPost.postId, localPost.isLiked);
+    // Update local post like status optimistically
+    setLocalPost(prev => ({
+      ...prev,
+      isLiked: !prev.isLiked,
+      likes: prev.isLiked ? prev.likes - 1 : prev.likes + 1
+    }));
   };
 
   const handleShare = () => {
-    onShare(post.postId);
+    onShare(localPost.postId);
   };
 
   const handleCommentToggle = () => {
@@ -132,14 +146,23 @@ export default function FeedPost({ post, user, onLike, onShare, onComment, onDel
       return;
     }
     
-    if (commentPrivacy === 'followers' && user.id !== post.user.id && !isFollowing) {
+    if (commentPrivacy === 'followers' && user.id !== localPost.user.id && !isFollowing) {
       alert('Only followers can comment on this post.');
       return;
     }
 
     setIsSubmittingComment(true);
     try {
-      await onComment(post.postId, commentText);
+      const newComment = await onComment(localPost.postId, commentText);
+      
+      // Update local state with new comment if returned
+      if (newComment) {
+        setLocalPost(prev => ({
+          ...prev,
+          comments: [newComment, ...prev.comments] // Add to beginning for chronological order
+        }));
+      }
+      
       setCommentText('');
     } catch (error) {
       console.error('Error submitting comment:', error);
@@ -148,28 +171,42 @@ export default function FeedPost({ post, user, onLike, onShare, onComment, onDel
     }
   };
 
+  const handleDeleteComment = async (postCommentId: number) => {
+    try {
+      await onDeleteComment(localPost.postId, postCommentId);
+      
+      // Update local state by removing the deleted comment
+      setLocalPost(prev => ({
+        ...prev,
+        comments: prev.comments.filter(comment => comment.postCommentId !== postCommentId)
+      }));
+    } catch (error) {
+      console.error('Error deleting comment:', error);
+    }
+  };
+
   const handleFollow = async (e: React.MouseEvent) => {
     e.stopPropagation();
     
     console.log('Follow button clicked');
     console.log('Current user:', user?.id);
-    console.log('Post author:', post.user?.id);
+    console.log('Post author:', localPost.user?.id);
     console.log('Current follow status:', isFollowing);
     
-    if (!user || !post.user?.id || user.id === post.user.id) {
-      console.log('Cannot follow:', !user ? 'No user' : !post.user?.id ? 'No post author' : 'Cannot follow yourself');
+    if (!user || !localPost.user?.id || user.id === localPost.user.id) {
+      console.log('Cannot follow:', !user ? 'No user' : !localPost.user?.id ? 'No post author' : 'Cannot follow yourself');
       return;
     }
     
     setIsFollowingLoading(true);
     try {
       if (isFollowing) {
-        console.log('Unfollowing user:', post.user.id);
-        await api.post(`/users/${post.user.id}/unfollow`);
+        console.log('Unfollowing user:', localPost.user.id);
+        await api.post(`/users/${localPost.user.id}/unfollow`);
         setIsFollowing(false);
       } else {
-        console.log('Following user:', post.user.id);
-        await api.post(`/users/${post.user.id}/follow`);
+        console.log('Following user:', localPost.user.id);
+        await api.post(`/users/${localPost.user.id}/follow`);
         setIsFollowing(true);
       }
     } catch (error: any) {
@@ -188,7 +225,7 @@ export default function FeedPost({ post, user, onLike, onShare, onComment, onDel
 
   const handlePrivacyChange = async (privacy: PostPrivacy) => {
     try {
-      const response = await api.put(`/posts/${post.postId}/privacy`, { privacy });
+      const response = await api.put(`/posts/${localPost.postId}/privacy`, { privacy });
       if (response.status === 200) {
         setPostPrivacy(privacy);
         setShowPrivacyMenu(false);
@@ -200,7 +237,7 @@ export default function FeedPost({ post, user, onLike, onShare, onComment, onDel
 
   const handleCommentPrivacyChange = async (privacy: CommentPrivacy) => {
     try {
-      const response = await api.put(`/posts/${post.postId}/comment-privacy`, { commentPrivacy: privacy });
+      const response = await api.put(`/posts/${localPost.postId}/comment-privacy`, { commentPrivacy: privacy });
       if (response.status === 200) {
         setCommentPrivacy(privacy);
         setShowSettingsMenu(false);
@@ -223,7 +260,7 @@ export default function FeedPost({ post, user, onLike, onShare, onComment, onDel
   };
 
   const canDeleteComment = (comment: any) => {
-    return user && (comment.userId === user.id || post.userId === user.id);
+    return user && (comment.userId === user.id || localPost.userId === user.id);
   };
 
   // Format post content with line breaks and paragraphs
@@ -274,19 +311,19 @@ export default function FeedPost({ post, user, onLike, onShare, onComment, onDel
       case 'public':
         return true;
       case 'followers':
-        return user.id === post.user.id || isFollowing;
+        return user.id === localPost.user.id || isFollowing;
       case 'private':
-        return user.id === post.user.id;
+        return user.id === localPost.user.id;
       default:
         return true;
     }
   };
 
   // Show follow button only if user is not the post author
-  const showFollowButton = user && post.user && user.id !== post.user.id;
+  const showFollowButton = user && localPost.user && user.id !== localPost.user.id;
 
   // Check if current user is the post author (for privacy controls)
-  const isPostAuthor = user && post.user && user.id === post.user.id;
+  const isPostAuthor = user && localPost.user && user.id === localPost.user.id;
 
   // Render post based on privacy
   if (!canViewPost()) {
@@ -337,11 +374,11 @@ export default function FeedPost({ post, user, onLike, onShare, onComment, onDel
           <div className="relative">
             <Image
               src={
-                post.authorAvatar?.startsWith('http') 
-                  ? post.authorAvatar 
-                  : `${process.env.NEXT_PUBLIC_FILE_URL}/${post.authorAvatar || 'avatar.png'}`
+                localPost.authorAvatar?.startsWith('http') 
+                  ? localPost.authorAvatar 
+                  : `${process.env.NEXT_PUBLIC_FILE_URL}/${localPost.authorAvatar || 'avatar.png'}`
               }
-              alt={post.authorName}
+              alt={localPost.authorName}
               width={48}
               height={48}
               className="w-12 h-12 rounded-full object-cover border-2 border-gray-200 dark:border-gray-700"
@@ -353,7 +390,7 @@ export default function FeedPost({ post, user, onLike, onShare, onComment, onDel
           <div className="flex-1 min-w-0">
             <div className="flex items-center space-x-2">
               <div className="font-semibold text-gray-900 dark:text-white truncate">
-                {post.authorName}
+                {localPost.authorName}
               </div>
               {postPrivacy !== 'public' && (
                 <FontAwesomeIcon 
@@ -369,7 +406,7 @@ export default function FeedPost({ post, user, onLike, onShare, onComment, onDel
               </div>
             )}
             <div className="text-xs text-gray-500 dark:text-gray-400">
-              {formatTimeAgo(post.created_at)} • {getPrivacyText(postPrivacy)}
+              {formatTimeAgo(localPost.created_at)} • {getPrivacyText(postPrivacy)}
             </div>
           </div>
         </div>
@@ -515,7 +552,7 @@ export default function FeedPost({ post, user, onLike, onShare, onComment, onDel
             overflow: 'hidden'
           }}
         >
-          {formatPostContent(post.content)}
+          {formatPostContent(localPost.content)}
         </div>
         
         {/* Show More/Less Button */}
@@ -531,14 +568,14 @@ export default function FeedPost({ post, user, onLike, onShare, onComment, onDel
       </div>
 
       {/* Post Image */}
-      {post.image_url && (
+      {localPost.image_url && (
         <div className="mb-4">
           <div className="relative w-full h-auto max-h-96 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-900">
             <Image 
               src={
-                post.image_url?.startsWith('http')
-                  ? post.image_url
-                  : `${process.env.NEXT_PUBLIC_FILE_URL}${post.image_url}`
+                localPost.image_url?.startsWith('http')
+                  ? localPost.image_url
+                  : `${process.env.NEXT_PUBLIC_FILE_URL}${localPost.image_url}`
               } 
               alt="Post image"
               width={800}
@@ -567,22 +604,22 @@ export default function FeedPost({ post, user, onLike, onShare, onComment, onDel
       <div className="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400 mb-3">
         <div className="flex space-x-4">
           <button
-            onClick={() => onShowModal('likes', post.postId)}
+            onClick={() => onShowModal('likes', localPost.postId)}
             className="hover:text-[#0A66C2] dark:hover:text-blue-400 transition-colors cursor-pointer"
           >
-            {post.likes} {post.likes === 1 ? 'like' : 'likes'}
+            {localPost.likes} {localPost.likes === 1 ? 'like' : 'likes'}
           </button>
           <button
-            onClick={() => onShowModal('comments', post.postId)}
+            onClick={() => onShowModal('comments', localPost.postId)}
             className="hover:text-[#0A66C2] dark:hover:text-blue-400 transition-colors cursor-pointer"
           >
-            {post.comments.length} {post.comments.length === 1 ? 'comment' : 'comments'}
+            {localPost.comments.length} {localPost.comments.length === 1 ? 'comment' : 'comments'}
           </button>
           <button
-            onClick={() => onShowModal('shares', post.postId)}
+            onClick={() => onShowModal('shares', localPost.postId)}
             className="hover:text-[#0A66C2] dark:hover:text-blue-400 transition-colors cursor-pointer"
           >
-            {post.shares} {post.shares === 1 ? 'share' : 'shares'}
+            {localPost.shares} {localPost.shares === 1 ? 'share' : 'shares'}
           </button>
         </div>
       </div>
@@ -592,16 +629,16 @@ export default function FeedPost({ post, user, onLike, onShare, onComment, onDel
         <button
           onClick={handleLike}
           className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg transition-all ${
-            post.isLiked 
+            localPost.isLiked 
               ? 'text-red-600 hover:text-red-700 dark:text-red-500 dark:hover:text-red-400' 
               : 'text-gray-600 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-750'
           }`}
         >
           <FontAwesomeIcon 
-            icon={post.isLiked ? faHeartSolid : faHeartRegular} 
-            className={`w-5 h-5 ${post.isLiked ? 'scale-110' : ''}`}
+            icon={localPost.isLiked ? faHeartSolid : faHeartRegular} 
+            className={`w-5 h-5 ${localPost.isLiked ? 'scale-110' : ''}`}
           />
-          <span className="font-medium">{post.isLiked ? 'Liked' : 'Like'}</span>
+          <span className="font-medium">{localPost.isLiked ? 'Liked' : 'Like'}</span>
         </button>
 
         <button
@@ -656,17 +693,17 @@ export default function FeedPost({ post, user, onLike, onShare, onComment, onDel
                     value={commentText}
                     onChange={(e) => setCommentText(e.target.value)}
                     placeholder={
-                      commentPrivacy === 'followers' && user.id !== post.user.id && !isFollowing
+                      commentPrivacy === 'followers' && user.id !== localPost.user.id && !isFollowing
                         ? 'Follow to comment...'
                         : 'Write a comment...'
                     }
                     className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-full text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    disabled={isSubmittingComment || (commentPrivacy === 'followers' && user.id !== post.user.id && !isFollowing)}
+                    disabled={isSubmittingComment || (commentPrivacy === 'followers' && user.id !== localPost.user.id && !isFollowing)}
                   />
                 </div>
                 <button
                   type="submit"
-                  disabled={!commentText.trim() || isSubmittingComment || (commentPrivacy === 'followers' && user.id !== post.user.id && !isFollowing)}
+                  disabled={!commentText.trim() || isSubmittingComment || (commentPrivacy === 'followers' && user.id !== localPost.user.id && !isFollowing)}
                   className="px-4 py-2.5 bg-[#0A66C2] text-white rounded-full text-sm font-medium hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2 min-w-[80px] justify-center"
                 >
                   {isSubmittingComment ? (
@@ -691,14 +728,14 @@ export default function FeedPost({ post, user, onLike, onShare, onComment, onDel
 
           {/* Comments List */}
           <div className="space-y-3">
-            {post.comments.length === 0 ? (
+            {localPost.comments.length === 0 ? (
               <div className="text-center text-gray-500 dark:text-gray-400 text-sm py-4">
                 {commentPrivacy === 'none' 
                   ? 'Comments are disabled for this post.'
                   : 'No comments yet. Be the first to comment!'}
               </div>
             ) : (
-              post.comments.map((comment: any) => (
+              localPost.comments.map((comment: any) => (
                 <div key={comment.postCommentId} className="flex space-x-3 group">
                   <div className="relative">
                     <Image
@@ -724,7 +761,7 @@ export default function FeedPost({ post, user, onLike, onShare, onComment, onDel
                             {comment.user?.firstName} {comment.user?.lastName}
                           </div>
                           <p className="text-gray-700 dark:text-gray-300 text-sm mt-1.5 leading-relaxed">
-                            {comment.content}
+                            {comment?.comment}
                           </p>
                         </div>
                         
@@ -734,7 +771,7 @@ export default function FeedPost({ post, user, onLike, onShare, onComment, onDel
                           </span>
                           {canDeleteComment(comment) && (
                             <button
-                              onClick={() => onDeleteComment(post.postId, comment.postCommentId)}
+                              onClick={() => handleDeleteComment(comment.postCommentId)}
                               className="opacity-0 group-hover:opacity-100 text-red-500 hover:text-red-700 dark:hover:text-red-400 transition-opacity p-1"
                               title="Delete comment"
                             >

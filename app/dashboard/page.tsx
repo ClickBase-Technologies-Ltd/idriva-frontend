@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import Sidebar from "@/components/Sidebar";
 import RightbarRecruiters from "@/components/Rightbar";
 import FeedPost from "@/components/FeedPost";
@@ -24,7 +24,7 @@ interface User {
   lastName: string;
   otherNames?: string;
   role: string;
-  profileImage?: string | null; // Changed from profile_picture to profileImage
+  profileImage?: string | null;
   coverImage?: string | null;
   email: string;
   phoneNumber: string;
@@ -141,7 +141,6 @@ interface FeedItem {
   user?: PostUser;
   postId: number;
   isLiked: boolean;
-  // Job specific fields
   jobTitle?: string;
   jobDescription?: string;
   jobLocation?: string;
@@ -159,49 +158,35 @@ interface ModalData {
   title: string;
 }
 
+interface ChatUser {
+  id: string;
+  firstName: string;
+  lastName: string;
+  profileImage?: string | null;
+}
+
 export default function FeedPage() {
   const [user, setUser] = useState<User | null>(null);
   const [feed, setFeed] = useState<FeedItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [hasNewPosts, setHasNewPosts] = useState(false);
-  const [isAutoRefreshing, setIsAutoRefreshing] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [modalData, setModalData] = useState<ModalData | null>(null);
   const [modalLoading, setModalLoading] = useState(false);
-  const feedContainerRef = useRef<HTMLDivElement>(null);
-  const lastPostIdRef = useRef<number>(0);
-  const lastJobIdRef = useRef<number>(0);
   
+  // Chat states
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [selectedChatUser, setSelectedChatUser] = useState<ChatUser | null>(null);
+  const [unreadMessages, setUnreadMessages] = useState(0);
+
+  const feedContainerRef = useRef<HTMLDivElement>(null);
+  
+  // Track last fetch time to prevent too frequent requests
+  const lastFetchRef = useRef<number>(0);
+  const refreshTimeoutRef = useRef<NodeJS.Timeout>();
 
   // Fetch user data and posts
-  // useEffect(() => {
-  //   const fetchData = async () => {
-  //     try {
-  //       setLoading(true);
-        
-  //       const storedUser = localStorage.getItem('user');
-  //       if (storedUser) {
-  //         const userData: User = JSON.parse(storedUser);
-  //         setUser(userData);
-  //       } else {
-  //         window.location.href = '/auth/login';
-  //         return;
-  //       }
-
-  //       await fetchFeed();
-        
-  //     } catch (error) {
-  //       console.error('Error fetching data:', error);
-  //       setError('Failed to load feed');
-  //     } finally {
-  //       setLoading(false);
-  //     }
-  //   };
-
-  //   fetchData();
-  // }, []);
-
-
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -236,17 +221,14 @@ export default function FeedPage() {
               };
               
               setUser(userObj);
-              // Optionally store in localStorage for other components
               localStorage.setItem('user', JSON.stringify(userObj));
             } else {
               console.error('API failed with status:', response.status);
               
-              // Fallback to localStorage if API fails
               const storedUser = localStorage.getItem('user');
               if (storedUser) {
                 setUser(JSON.parse(storedUser));
               } else {
-                // Create a minimal fallback user
                 setUser({
                   id: 'fallback-1',
                   firstName: 'User',
@@ -261,7 +243,6 @@ export default function FeedPage() {
             console.error('Error fetching user:', error);
             setError('Network error fetching user data');
             
-            // Fallback to localStorage on network error
             const storedUser = localStorage.getItem('user');
             if (storedUser) {
               setUser(JSON.parse(storedUser));
@@ -269,7 +250,6 @@ export default function FeedPage() {
           }
         };
 
-        // Fetch both user data and feed data in parallel
         await Promise.all([
           fetchUserData(),
           fetchFeed()
@@ -280,31 +260,56 @@ export default function FeedPage() {
         setError('Failed to load feed');
       } finally {
         setLoading(false);
+        lastFetchRef.current = Date.now();
       }
     };
 
     fetchData();
+
+    // Cleanup on unmount
+    return () => {
+      if (refreshTimeoutRef.current) {
+        clearTimeout(refreshTimeoutRef.current);
+      }
+    };
   }, []);
 
-
-  // Auto-refresh posts every 30 seconds
+  // Simple periodic refresh - ONLY when page is active
   useEffect(() => {
-    const interval = setInterval(async () => {
-      if (!loading) {
+    const checkForUpdates = async () => {
+      // Only check if page is visible and not loading/refreshing
+      if (document.visibilityState === 'visible' && !loading && !isRefreshing) {
         await checkForNewContent();
       }
-    }, 30000);
+    };
 
-    return () => clearInterval(interval);
-  }, [loading]);
+    // Check every 60 seconds (not 30)
+    const interval = setInterval(checkForUpdates, 60000);
+    
+    // Also check when user comes back to the tab
+    document.addEventListener('visibilitychange', checkForUpdates);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', checkForUpdates);
+    };
+  }, [loading, isRefreshing]);
 
   // Fetch both posts and jobs for the feed
-  const fetchFeed = async () => {
+  const fetchFeed = useCallback(async () => {
     try {
-      // Fetch posts and jobs in parallel
+      setIsRefreshing(true);
+      
+      // Rate limiting - don't fetch if last fetch was less than 10 seconds ago
+      const now = Date.now();
+      if (now - lastFetchRef.current < 10000) {
+        console.log('Rate limiting - skipping fetch');
+        return;
+      }
+
       const [postsResponse, jobsResponse] = await Promise.all([
         api.get('/posts'),
-        api.get('/jobs') // You'll need to create this endpoint
+        api.get('/jobs')
       ]);
 
       const posts: Post[] = postsResponse.status === 200 ? postsResponse.data : [];
@@ -348,13 +353,12 @@ export default function FeedPage() {
         authorName: job.company.companyName,
         authorAvatar: job.company.companyLogo || '/company-avatar.png',
         created_at: job.created_at,
-        content: job.description,
+        content: job.jobDescription,
         image_url: job.image_url ? `${process.env.NEXT_PUBLIC_FILE_URL}${job.image_url}` : null,
         likes: 0,
         comments: [],
         shares: 0,
         isLiked: false,
-        // Job specific fields
         jobTitle: job.jobTitle,
         jobDescription: job.jobDescription,
         jobLocation: job.jobLocation,
@@ -364,61 +368,68 @@ export default function FeedPage() {
         companyName: job.company.companyName,
         companyLogo: job.company.companyLogo,
         jobId: job.jobId,
-        applicationStatus: job.applicationStatus
       }));
 
-      // Combine and sort by creation date (newest first)
+      // Combine and sort by creation date
       const allFeedItems = [...postFeedItems, ...jobFeedItems].sort((a, b) => 
         new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       );
       
       setFeed(allFeedItems);
+      lastFetchRef.current = Date.now();
       
-      // Update last IDs for refresh detection
-      if (postFeedItems.length > 0) {
-        lastPostIdRef.current = Math.max(...postFeedItems.map(item => item.postId));
-      }
-      if (jobFeedItems.length > 0) {
-        lastJobIdRef.current = Math.max(...jobFeedItems.map(item => item.jobId || 0));
-      }
     } catch (error) {
       console.error('Error fetching feed:', error);
       setError('Failed to load feed');
+    } finally {
+      setIsRefreshing(false);
     }
-  };
+  }, [user?.id]);
 
-  // Check for new content without updating the feed immediately
-  const checkForNewContent = async () => {
+  // Check for new content - SIMPLE version
+  const checkForNewContent = useCallback(async () => {
+    // Rate limiting - don't check if last check was less than 30 seconds ago
+    const now = Date.now();
+    if (now - lastFetchRef.current < 30000) {
+      return;
+    }
+
     try {
-      setIsAutoRefreshing(true);
+      // Only check for the latest items
       const [postsResponse, jobsResponse] = await Promise.all([
-        api.get('/posts'),
-        api.get('/jobs')
+        api.get('/posts?limit=5'),
+        api.get('/jobs?limit=5')
       ]);
 
       if (postsResponse.status === 200 && jobsResponse.status === 200) {
-        const posts: Post[] = postsResponse.data;
-        const jobs: Job[] = jobsResponse.data;
-
+        const latestPosts: Post[] = postsResponse.data;
+        const latestJobs: Job[] = jobsResponse.data;
+        
         let hasNewContent = false;
-
-        // Check for new posts
-        if (posts.length > 0) {
-          const latestPostId = Math.max(...posts.map(post => post.postId));
-          if (latestPostId > lastPostIdRef.current) {
+        
+        // Check posts
+        for (const post of latestPosts) {
+          if (!feed.some(item => 
+            item.type === 'post' && item.postId === post.postId
+          )) {
             hasNewContent = true;
+            break;
+          }
+        }
+        
+        // Check jobs
+        if (!hasNewContent) {
+          for (const job of latestJobs) {
+            if (!feed.some(item =>
+              item.type === 'job' && item.jobId === job.jobId
+            )) {
+              hasNewContent = true;
+              break;
+            }
           }
         }
 
-        // Check for new jobs
-        if (jobs.length > 0) {
-          const latestJobId = Math.max(...jobs.map(job => job.jobId));
-          if (latestJobId > lastJobIdRef.current) {
-            hasNewContent = true;
-          }
-        }
-
-        if (hasNewContent) {
+        if (hasNewContent && feed.length > 0) {
           const isAtTop = feedContainerRef.current?.scrollTop === 0;
           if (!isAtTop) {
             setHasNewPosts(true);
@@ -427,212 +438,233 @@ export default function FeedPage() {
       }
     } catch (error) {
       console.error('Error checking for new content:', error);
-    } finally {
-      setIsAutoRefreshing(false);
     }
-  };
+  }, [feed]);
 
-  // Function to add new post to feed
-  const addNewPost = (newPost: Post) => {
-    const feedItem: FeedItem = {
-      id: `post-${newPost.postId}`,
-      postId: newPost.postId,
+  // Add new post - simple optimistic update
+  const addNewPost = useCallback(async (newPost: Post) => {
+    if (!user) return;
+
+    // Create optimistic post
+    const optimisticPost: FeedItem = {
+      id: `temp-${Date.now()}`,
+      postId: -Date.now(),
       type: "post",
-      authorName: user ? `${user.firstName} ${user.lastName}`.trim() : 'You',
-      authorAvatar: user?.profile_picture || '/avatar.png',
-      created_at: newPost.created_at,
+      authorName: `${user.firstName} ${user.lastName}`,
+      authorAvatar: user.profileImage || '/avatar.png',
+      created_at: new Date().toISOString(),
       content: newPost.body,
       image_url: newPost.uploadUrl ? `${process.env.NEXT_PUBLIC_API_URL}${newPost.uploadUrl}` : null,
       likes: 0,
       comments: [],
       shares: 0,
-      user: newPost.user,
+      user: {
+        id: user.id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        otherNames: user.otherNames,
+        profileSlug: null,
+        avatar: user.profileImage,
+        email: user.email,
+        phoneNumber: user.phoneNumber,
+        email_verified_at: new Date().toISOString(),
+        role: 0,
+        status: 'active',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        deleted_at: null
+      },
       isLiked: false,
     };
-    
-    setFeed(prevFeed => [feedItem, ...prevFeed]);
-    lastPostIdRef.current = Math.max(lastPostIdRef.current, newPost.postId);
-  };
 
-  // Function to add new job to feed
-  const addNewJob = (newJob: Job) => {
-    const feedItem: FeedItem = {
-      id: `job-${newJob.jobId}`,
-      type: "job",
-      authorName: newJob.company.companyName,
-      authorAvatar: newJob.company.companyLogo || '/company-avatar.png',
-      created_at: newJob.created_at,
-      content: newJob.description,
-      image_url: newJob.image_url ? `${process.env.NEXT_PUBLIC_FILE_URL}${newJob.image_url}` : null,
-      likes: 0,
-      comments: [],
-      shares: 0,
-      isLiked: false,
-      jobTitle: newJob.title,
-      jobDescription: newJob.description,
-      jobLocation: newJob.location,
-      salary: newJob.salary,
-      jobType: newJob.type,
-      companyName: newJob.company.companyName,
-      companyLogo: newJob.company.companyLogo,
-      jobId: newJob.jobId
-    };
-    
-    setFeed(prevFeed => [feedItem, ...prevFeed]);
-    lastJobIdRef.current = Math.max(lastJobIdRef.current, newJob.jobId);
-  };
+    // Add to feed optimistically
+    setFeed(prev => [optimisticPost, ...prev]);
 
-  // Handle like/unlike action (for posts only)
-  const handleLike = async (postId: number, currentlyLiked: boolean) => {
     try {
-      setFeed(prevFeed => 
-        prevFeed.map(item => 
-          item.type === "post" && item.postId === postId 
-            ? { 
-                ...item, 
-                likes: currentlyLiked ? item.likes - 1 : item.likes + 1,
-                isLiked: !currentlyLiked
-              }
-            : item
-        )
-      );
+      const formData = new FormData();
+      formData.append('content', newPost.body);
+      if (newPost.uploadUrl) {
+        // You'll need to handle file upload properly
+      }
 
+      const response = await api.post('/posts', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      if (response.status === 201) {
+        const realPost = response.data.post || response.data;
+        
+        // Replace optimistic post with real one
+        setFeed(prev => prev.map(item => 
+          item.id === optimisticPost.id ? {
+            id: `post-${realPost.postId}`,
+            postId: realPost.postId,
+            type: "post",
+            authorName: `${realPost.user?.firstName || user.firstName} ${realPost.user?.lastName || user.lastName}`,
+            authorAvatar: realPost.user?.avatar || user.profileImage || '/avatar.png',
+            created_at: realPost.created_at,
+            content: realPost.body,
+            image_url: realPost.uploadUrl ? `${process.env.NEXT_PUBLIC_FILE_URL}${realPost.uploadUrl}` : null,
+            likes: realPost.likes?.length || 0,
+            comments: realPost.comments || [],
+            shares: realPost.shares?.length || 0,
+            user: realPost.user,
+            isLiked: false,
+          } : item
+        ));
+      }
+    } catch (error) {
+      console.error('Error creating post:', error);
+      // Remove optimistic post on error
+      setFeed(prev => prev.filter(item => item.id !== optimisticPost.id));
+      setError('Failed to create post');
+    }
+  }, [user]);
+
+  // Simple like handler
+  const handleLike = useCallback(async (postId: number, currentlyLiked: boolean) => {
+    // Optimistic update
+    setFeed(prev => prev.map(item => 
+      item.type === 'post' && item.postId === postId 
+        ? { 
+            ...item, 
+            likes: currentlyLiked ? item.likes - 1 : item.likes + 1,
+            isLiked: !currentlyLiked
+          }
+        : item
+    ));
+
+    try {
       if (currentlyLiked) {
         await api.post(`/posts/${postId}/unlike`);
       } else {
         await api.post(`/posts/${postId}/like`);
       }
-      
     } catch (error) {
       console.error('Error toggling like:', error);
-      setFeed(prevFeed => 
-        prevFeed.map(item => 
-          item.type === "post" && item.postId === postId 
-            ? { 
-                ...item, 
-                likes: currentlyLiked ? item.likes + 1 : Math.max(0, item.likes - 1),
-                isLiked: currentlyLiked
-              }
-            : item
-        )
-      );
+      // Revert on error
+      setFeed(prev => prev.map(item => 
+        item.type === 'post' && item.postId === postId 
+          ? { 
+              ...item, 
+              likes: currentlyLiked ? item.likes + 1 : Math.max(0, item.likes - 1),
+              isLiked: currentlyLiked
+            }
+          : item
+      ));
+    }
+  }, []);
+
+  // Update handleComment to return the actual comment
+const handleComment = useCallback(async (postId: number, commentContent: string) => {
+  if (!commentContent.trim() || !user) return;
+
+  const tempCommentId = Date.now();
+  const optimisticComment = {
+    postCommentId: tempCommentId,
+    userId: user.id,
+    postId,
+    content: commentContent,
+    created_at: new Date().toISOString(),
+    user: {
+      id: user.id,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      avatar: user.profileImage || null,
     }
   };
 
-  // Handle share action (for posts only)
-  const handleShare = async (postId: number) => {
-    try {
-      setFeed(prevFeed => 
-        prevFeed.map(item => 
-          item.type === "post" && item.postId === postId 
-            ? { ...item, shares: item.shares + 1 }
-            : item
-        )
-      );
+  // Optimistic update
+  setFeed(prev => prev.map(item => 
+    item.type === 'post' && item.postId === postId 
+      ? { 
+          ...item, 
+          comments: [optimisticComment, ...item.comments]
+        }
+      : item
+  ));
 
-      await api.post(`/posts/${postId}/share`);
+  try {
+    const response = await api.post(`/posts/${postId}/comment`, {
+      comment: commentContent
+    });
+
+    if (response.status === 201) {
+      const actualComment = response.data.comment || response.data;
       
+      // Replace optimistic comment
+      setFeed(prev => prev.map(item => 
+        item.type === 'post' && item.postId === postId 
+          ? { 
+              ...item, 
+              comments: item.comments.map(comment => 
+                comment.postCommentId === tempCommentId ? actualComment : comment
+              )
+            }
+          : item
+      ));
+      
+      // Return the actual comment
+      return actualComment;
+    }
+  } catch (error) {
+    console.error('Error adding comment:', error);
+    // Revert on error
+    setFeed(prev => prev.map(item => 
+      item.type === 'post' && item.postId === postId 
+        ? { 
+            ...item, 
+            comments: item.comments.filter(comment => comment.postCommentId !== tempCommentId)
+          }
+        : item
+    ));
+    throw error;
+  }
+}, [user]);
+
+  // Simple share handler
+  const handleShare = useCallback(async (postId: number) => {
+    setFeed(prev => prev.map(item => 
+      item.type === 'post' && item.postId === postId 
+        ? { ...item, shares: item.shares + 1 }
+        : item
+    ));
+
+    try {
+      await api.post(`/posts/${postId}/share`);
     } catch (error) {
       console.error('Error sharing post:', error);
-      setFeed(prevFeed => 
-        prevFeed.map(item => 
-          item.type === "post" && item.postId === postId 
-            ? { ...item, shares: Math.max(0, item.shares - 1) }
-            : item
-        )
-      );
+      setFeed(prev => prev.map(item => 
+        item.type === 'post' && item.postId === postId 
+          ? { ...item, shares: Math.max(0, item.shares - 1) }
+          : item
+      ));
     }
-  };
+  }, []);
 
-  // Handle comment action (for posts only)
-  const handleComment = async (postId: number, commentContent: string) => {
-    if (!commentContent.trim()) return;
+  // Delete comment handler
+  const handleDeleteComment = useCallback(async (postId: number, commentId: number) => {
+    setFeed(prev => prev.map(item => 
+      item.type === 'post' && item.postId === postId 
+        ? { 
+            ...item, 
+            comments: item.comments.filter(comment => comment.postCommentId !== commentId)
+          }
+        : item
+    ));
 
     try {
-      const newComment: Comment = {
-        postCommentId: Date.now(),
-        userId: user!.id,
-        postId: postId,
-        content: commentContent,
-        created_at: new Date().toISOString(),
-        user: {
-          id: user!.id,
-          firstName: user!.firstName,
-          lastName: user!.lastName,
-          avatar: user!.profile_picture || null,
-        }
-      };
-
-      setFeed(prevFeed => 
-        prevFeed.map(item => 
-          item.type === "post" && item.postId === postId 
-            ? { 
-                ...item, 
-                comments: [newComment, ...item.comments]
-              }
-            : item
-        )
-      );
-
-      const response = await api.post(`/posts/${postId}/comment`, {
-        comment: commentContent
-      });
-
-      if (response.status === 201) {
-        const actualComment = response.data.comment || response.data;
-        setFeed(prevFeed => 
-          prevFeed.map(item => 
-            item.type === "post" && item.postId === postId 
-              ? { 
-                  ...item, 
-                  comments: item.comments.map(comment => 
-                    comment.postCommentId === newComment.postCommentId ? actualComment : comment
-                  )
-                }
-              : item
-          )
-        );
-      }
-      
-    } catch (error) {
-      console.error('Error adding comment:', error);
-      setFeed(prevFeed => 
-        prevFeed.map(item => 
-          item.type === "post" && item.postId === postId 
-            ? { 
-                ...item, 
-                comments: item.comments.filter(comment => comment.id !== Date.now())
-              }
-            : item
-        )
-      );
-    }
-  };
-
-  // Handle delete comment action (for posts only)
-  const handleDeleteComment = async (postId: number, commentId: number) => {
-    try {
-      setFeed(prevFeed => 
-        prevFeed.map(item => 
-          item.type === "post" && item.postId === postId 
-            ? { 
-                ...item, 
-                comments: item.comments.filter(comment => comment.id !== commentId)
-              }
-            : item
-        )
-      );
-
       await api.delete(`/posts/${postId}/comment/${commentId}`);
-      
     } catch (error) {
       console.error('Error deleting comment:', error);
       await fetchFeed();
     }
-  };
+  }, [fetchFeed]);
 
-  // Show modal with likes, comments, or shares (for posts only)
-  const showModal = async (type: 'likes' | 'comments' | 'shares', postId: number) => {
+  // Show modal with likes, comments, or shares
+  const showModal = useCallback(async (type: 'likes' | 'comments' | 'shares', postId: number) => {
     setModalLoading(true);
     try {
       let endpoint = '';
@@ -668,70 +700,69 @@ export default function FeedPage() {
     } finally {
       setModalLoading(false);
     }
-  };
+  }, []);
 
   // Close modal
-  const closeModal = () => {
+  const closeModal = useCallback(() => {
     setModalData(null);
-  };
+  }, []);
 
-  // Load new posts and scroll to top
-  const loadNewPosts = async () => {
+  // Load new posts button
+  const loadNewPosts = useCallback(async () => {
     await fetchFeed();
     setHasNewPosts(false);
     
     if (feedContainerRef.current) {
       feedContainerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
     }
-  };
+  }, [fetchFeed]);
 
-  // Handle scroll to detect if user is at top
-  const handleScroll = () => {
+  // Handle scroll
+  const handleScroll = useCallback(() => {
     if (feedContainerRef.current) {
       const isAtTop = feedContainerRef.current.scrollTop === 0;
       if (isAtTop && hasNewPosts) {
         setHasNewPosts(false);
       }
     }
-  };
+  }, [hasNewPosts]);
 
-
-  // Add these states with your existing useState declarations
-const [isChatOpen, setIsChatOpen] = useState(false);
-const [selectedChatUser, setSelectedChatUser] = useState<ChatUser | null>(null);
-const [unreadMessages, setUnreadMessages] = useState(0);
-
-// Add this useEffect to check for unread messages
-useEffect(() => {
-  const checkUnreadMessages = async () => {
-    try {
-      const response = await api.get('/chat/unread-count');
-      if (response.status === 200) {
-        setUnreadMessages(response.data.count || 0);
+  // Check unread messages - with rate limiting
+  useEffect(() => {
+    let lastCheck = 0;
+    
+    const checkUnreadMessages = async () => {
+      const now = Date.now();
+      if (now - lastCheck < 30000) return; // Check every 30 seconds max
+      
+      try {
+        const response = await api.get('/chat/unread-count');
+        if (response.status === 200) {
+          setUnreadMessages(response.data.count || 0);
+          lastCheck = now;
+        }
+      } catch (error) {
+        console.error('Error checking unread messages:', error);
       }
-    } catch (error) {
-      console.error('Error checking unread messages:', error);
+    };
+
+    checkUnreadMessages();
+    const interval = setInterval(checkUnreadMessages, 30000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleOpenChat = useCallback((userId?: string, userData?: ChatUser) => {
+    if (userId && userData) {
+      setSelectedChatUser(userData);
     }
-  };
+    setIsChatOpen(true);
+  }, []);
 
-  // Check every 30 seconds
-  checkUnreadMessages();
-  const interval = setInterval(checkUnreadMessages, 30000);
-
-  return () => clearInterval(interval);
-}, []);
-
-const handleOpenChat = (userId?: string, userData?: ChatUser) => {
-  if (userId && userData) {
-    setSelectedChatUser(userData);
-  }
-  setIsChatOpen(true);
-};
   if (loading) {
     return (
       <>
         <HeaderLoggedIn />
-       
         <div className="bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-white pt-16">
           <div className="max-w-[1360px] mx-auto px-4 lg:px-6 flex gap-6 mt-[-70px] min-h-screen">
             <div className="flex-1 flex items-center justify-center">
@@ -749,36 +780,36 @@ const handleOpenChat = (userId?: string, userData?: ChatUser) => {
   return (
     <>
       <HeaderLoggedIn />
-       {/* Chat Components */}
-{!isChatOpen && (
-  <ChatButton 
-    onClick={() => setIsChatOpen(true)} 
-    unreadCount={unreadMessages}
-  />
-)}
+      {/* Chat Components */}
+      {!isChatOpen && (
+        <ChatButton 
+          onClick={() => setIsChatOpen(true)} 
+          unreadCount={unreadMessages}
+        />
+      )}
 
-{isChatOpen && (
-  <ChatComponent
-    currentUser={user}
-    isOpen={isChatOpen}
-    onClose={() => {
-      setIsChatOpen(false);
-      setSelectedChatUser(null);
-    }}
-    initialReceiver={selectedChatUser}
-  />
-)}
+      {isChatOpen && (
+        <ChatComponent
+          currentUser={user}
+          isOpen={isChatOpen}
+          onClose={() => {
+            setIsChatOpen(false);
+            setSelectedChatUser(null);
+          }}
+          initialReceiver={selectedChatUser}
+        />
+      )}
       <div className="bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-white pt-16">
         <div className="max-w-[1360px] mx-auto px-4 lg:px-6 flex gap-6 mt-[-70px]">
           {/* LEFT SIDEBAR */}
-          <aside className="w-[280px] hidden lg:block sticky top-16 h-[calc(100vh-4rem)] overflow-y-auto scrollbar-hide">
+          <aside className="w-[280px] hidden lg:block sticky top-16 h-[calc(100vh-4rem)] overflow-y-auto scrollbar-hide pb-10">
             <Sidebar />
           </aside>
 
           {/* MAIN FEED */}
           <main 
             ref={feedContainerRef}
-            className="flex-1 space-y-6 mt-6 max-h-[calc(100vh-4rem)] overflow-y-auto scrollbar-hide"
+            className="flex-1 space-y-6 mt-6 max-h-[calc(100vh-4rem)] overflow-y-auto scrollbar-hide pb-10"
             onScroll={handleScroll}
           >
             {/* New Posts Notification */}
@@ -798,14 +829,13 @@ const handleOpenChat = (userId?: string, userData?: ChatUser) => {
 
             {user && (
               <CreatePostBox 
-                // user={user} 
                 user={{
-                id: user.id,
-                firstName: user.firstName,
-                lastName: user.lastName,
-                role: user.role,
-                profile_picture: user.profileImage || undefined // Map profileImage to profile_picture
-              }}
+                  id: user.id,
+                  firstName: user.firstName,
+                  lastName: user.lastName,
+                  role: user.role,
+                  profile_picture: user.profileImage || undefined
+                }}
                 onPostCreated={addNewPost} 
                 onError={setError}
               />
@@ -841,14 +871,13 @@ const handleOpenChat = (userId?: string, userData?: ChatUser) => {
                   <FeedPost 
                     key={item.id} 
                     post={item} 
-                    // user={user} 
                     user={{
-                id: user.id,
-                firstName: user.firstName,
-                lastName: user.lastName,
-                role: user.role,
-                profile_picture: user.profileImage || undefined // Map profileImage to profile_picture
-              }}
+                      id: user!.id,
+                      firstName: user!.firstName,
+                      lastName: user!.lastName,
+                      role: user!.role,
+                      profile_picture: user!.profileImage || undefined
+                    }}
                     onLike={handleLike}
                     onShare={handleShare}
                     onComment={handleComment}
@@ -861,8 +890,8 @@ const handleOpenChat = (userId?: string, userData?: ChatUser) => {
               )
             )}
 
-            {/* Auto-refresh indicator */}
-            {isAutoRefreshing && (
+            {/* Refresh indicator */}
+            {isRefreshing && (
               <div className="text-center py-4 text-gray-500 dark:text-gray-400 text-sm">
                 Checking for new content...
               </div>
@@ -907,8 +936,8 @@ const handleOpenChat = (userId?: string, userData?: ChatUser) => {
                 </div>
               ) : (
                 <div className="divide-y divide-gray-200 dark:divide-gray-700">
-                  {modalData.data.map((item: any) => (
-                    <div key={item.postId} className="p-4 flex items-center space-x-3">
+                  {modalData.data.map((item: any, index: number) => (
+                    <div key={item.id || item.postCommentId || index} className="p-4 flex items-center space-x-3">
                       <img
                         src={item.user?.avatar || '/avatar.png'}
                         alt={item.user?.firstName}
