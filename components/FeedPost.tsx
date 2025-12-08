@@ -137,39 +137,39 @@ export default function FeedPost({ post: initialPost, user, onLike, onShare, onC
   };
 
   const handleSubmitComment = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!commentText.trim() || isSubmittingComment) return;
+  e.preventDefault();
+  if (!commentText.trim() || isSubmittingComment) return;
 
-    // Check if user can comment based on privacy settings
-    if (commentPrivacy === 'none') {
-      alert('Comments are disabled for this post.');
-      return;
+  // Check if user can comment based on privacy settings
+  if (commentPrivacy === 'none') {
+    alert('Comments are disabled for this post.');
+    return;
+  }
+  
+  if (commentPrivacy === 'followers' && user.id !== localPost.user.id && !isFollowing) {
+    alert('Only followers can comment on this post.');
+    return;
+  }
+
+  setIsSubmittingComment(true);
+  try {
+    const newComment = await onComment(localPost.postId, commentText);
+    
+    // Update local state with new comment if returned
+    if (newComment) {
+      setLocalPost(prev => ({
+        ...prev,
+        comments: [newComment, ...prev.comments] // Add to beginning for chronological order
+      }));
     }
     
-    if (commentPrivacy === 'followers' && user.id !== localPost.user.id && !isFollowing) {
-      alert('Only followers can comment on this post.');
-      return;
-    }
-
-    setIsSubmittingComment(true);
-    try {
-      const newComment = await onComment(localPost.postId, commentText);
-      
-      // Update local state with new comment if returned
-      if (newComment) {
-        setLocalPost(prev => ({
-          ...prev,
-          comments: [newComment, ...prev.comments] // Add to beginning for chronological order
-        }));
-      }
-      
-      setCommentText('');
-    } catch (error) {
-      console.error('Error submitting comment:', error);
-    } finally {
-      setIsSubmittingComment(false);
-    }
-  };
+    setCommentText('');
+  } catch (error) {
+    console.error('Error submitting comment:', error);
+  } finally {
+    setIsSubmittingComment(false);
+  }
+};
 
   const handleDeleteComment = async (postCommentId: number) => {
     try {
@@ -247,8 +247,18 @@ export default function FeedPost({ post: initialPost, user, onLike, onShare, onC
     }
   };
 
-  const formatTimeAgo = (dateString: string) => {
+const formatTimeAgo = (dateString: string) => {
+  if (!dateString || dateString === 'Invalid Date') return 'just now';
+  
+  try {
     const date = new Date(dateString);
+    
+    // Check if date is valid
+    if (isNaN(date.getTime())) {
+      console.warn('Invalid date string:', dateString);
+      return 'just now';
+    }
+    
     const now = new Date();
     const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
     
@@ -256,8 +266,16 @@ export default function FeedPost({ post: initialPost, user, onLike, onShare, onC
     if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m`;
     if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h`;
     if (diffInSeconds < 2592000) return `${Math.floor(diffInSeconds / 86400)}d`;
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-  };
+    return date.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric', 
+      year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined 
+    });
+  } catch (error) {
+    console.error('Error formatting date:', error, dateString);
+    return 'just now';
+  }
+};
 
   const canDeleteComment = (comment: any) => {
     return user && (comment.userId === user.id || localPost.userId === user.id);
@@ -674,8 +692,8 @@ export default function FeedPost({ post: initialPost, user, onLike, onShare, onC
                 <div className="relative">
                   <Image
                     src={
-                      user?.profile_picture
-                        ? `${process.env.NEXT_PUBLIC_FILE_URL}/${user.profile_picture}`
+                      user?.profileImage
+                        ? `${process.env.NEXT_PUBLIC_FILE_URL}/${user.profileImage}`
                         : '/avatar.png'
                     }
                     alt={`${user?.firstName}'s profile picture`}
@@ -740,8 +758,8 @@ export default function FeedPost({ post: initialPost, user, onLike, onShare, onC
                   <div className="relative">
                     <Image
                       src={
-                        comment.user?.avatar
-                          ? `${process.env.NEXT_PUBLIC_FILE_URL}/${comment.user.avatar}`
+                        comment.user?.profileImage
+                          ? `${process.env.NEXT_PUBLIC_FILE_URL}/${comment.user?.profileImage}`
                           : '/avatar.png'
                       }
                       alt={comment.user?.firstName}
@@ -760,9 +778,10 @@ export default function FeedPost({ post: initialPost, user, onLike, onShare, onC
                           <div className="font-semibold text-sm text-gray-900 dark:text-white">
                             {comment.user?.firstName} {comment.user?.lastName}
                           </div>
-                          <p className="text-gray-700 dark:text-gray-300 text-sm mt-1.5 leading-relaxed">
-                            {comment?.comment}
-                          </p>
+                         {/* In the comments section of FeedPost.tsx */}
+<p className="text-gray-700 dark:text-gray-300 text-sm mt-1.5 leading-relaxed">
+  {comment.content || comment.comment}
+</p>
                         </div>
                         
                         <div className="flex items-center space-x-2">

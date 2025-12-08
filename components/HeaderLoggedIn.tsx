@@ -23,6 +23,8 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import api from '@/lib/api';
 import { listenToProfileUpdate } from '@/utils/events';
+import ChatButton from '@/components/ChatButton'; // Import ChatButton
+import ChatComponent from '@/components/ChatComponent'; // Import ChatComponent
 
 interface User {
   id: string;
@@ -31,6 +33,14 @@ interface User {
   role: string;
   profile_picture?: string;
   profileImage?: string;
+  email?: string;
+  phoneNumber?: string;
+  coverImage?: string;
+  followersCount?: number;
+  followingCount?: number;
+  suggestedUsers?: any[];
+  unreadCount?: number;
+  isFollowing?: boolean;
 }
 
 interface SearchResult {
@@ -58,6 +68,10 @@ export default function HeaderLoggedIn() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [error, setError] = useState('');
 
+  // Chat states - ADD THESE
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [chatUnreadCount, setChatUnreadCount] = useState(0);
+  
   // Create a reusable fetchUserData function
   const fetchUserData = useCallback(async () => {
     try {
@@ -73,7 +87,6 @@ export default function HeaderLoggedIn() {
           id: userData.user?.id || '1',
           firstName: userData.user?.full_name?.split(" ")[0] || 'First Name',
           lastName: userData.user?.full_name?.split(" ").slice(1).join(" ") || 'Last Name',
-          otherNames: userData.user?.full_name?.split(" ").slice(2).join(" ") || '',
           role: userData.user?.role || 'Driver',
           email: userData.user?.email || '',
           phoneNumber: userData.user?.phoneNumber || '',
@@ -176,6 +189,28 @@ export default function HeaderLoggedIn() {
       unsubscribe();
     };
   }, [fetchUserData]);
+
+  // ADD THIS: Fetch chat unread count
+  useEffect(() => {
+    const fetchChatUnreadCount = async () => {
+      try {
+        const response = await api.get('/chat/unread-count');
+        if (response.status === 200) {
+          setChatUnreadCount(response.data.count || 0);
+        }
+      } catch (error) {
+        console.error('Error fetching chat unread count:', error);
+      }
+    };
+
+    // Initial fetch
+    fetchChatUnreadCount();
+    
+    // Poll every 30 seconds for new messages
+    const interval = setInterval(fetchChatUnreadCount, 30000);
+    
+    return () => clearInterval(interval);
+  }, []);
 
   // Toggle dark mode
   const toggleDarkMode = () => {
@@ -283,6 +318,11 @@ export default function HeaderLoggedIn() {
     router.push('/');
   };
 
+  // ADD THIS: Handle opening chat
+  const handleOpenChat = () => {
+    setIsChatOpen(true);
+  };
+
   const fullName = user ? `${user.firstName} ${user.lastName}`.trim() : '';
 
   // Role-based menu items with Font Awesome icons
@@ -291,19 +331,19 @@ export default function HeaderLoggedIn() {
       { href: '/dashboard', icon: faHouse, label: 'Home' },
       { href: '/dashboard/driver/jobs', icon: faBriefcase, label: 'Jobs' },
       { href: '/dashboard/learning', icon: faBook, label: 'Learning' },
-      { href: '#', icon: faComments, label: 'Messages' },
+      { href: '#', icon: faComments, label: 'Messages', onClick: handleOpenChat }, // Added onClick
     ],
     Instructor: [
       { href: '/dashboard', icon: faHouse, label: 'Feed' },
       { href: '/instructor/my-courses', icon: faBook, label: 'Courses' },
       { href: '/instructor/schedule', icon: faCalendar, label: 'Schedule' },
-      { href: '#', icon: faComments, label: 'Messages' },
+      { href: '#', icon: faComments, label: 'Messages', onClick: handleOpenChat }, // Added onClick
     ],
     Recruiter: [
       { href: '/dashboard', icon: faHouse, label: 'Dashboard' },
       { href: '/recruiter/jobs', icon: faBriefcase, label: 'Post Jobs' },
       { href: '/recruiter/applications', icon: faSearch, label: 'Applications' },
-      { href: '#', icon: faComments, label: 'Messages' },
+      { href: '#', icon: faComments, label: 'Messages', onClick: handleOpenChat }, // Added onClick
     ]
   };
 
@@ -423,14 +463,25 @@ export default function HeaderLoggedIn() {
         <div className="hidden lg:flex items-center space-x-6 text-sm">
           {/* Role-based Menu Items */}
           {currentMenus.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className="text-gray-700 dark:text-gray-200 hover:text-blue-700 dark:hover:text-blue-400 transition-colors flex items-center"
-            >
-              <FontAwesomeIcon icon={item.icon} className="mr-2 w-4 h-4" />
-              {item.label}
-            </Link>
+            item.onClick ? (
+              <button
+                key={item.label}
+                onClick={item.onClick}
+                className="text-gray-700 dark:text-gray-200 hover:text-blue-700 dark:hover:text-blue-400 transition-colors flex items-center"
+              >
+                <FontAwesomeIcon icon={item.icon} className="mr-2 w-4 h-4" />
+                {item.label}
+              </button>
+            ) : (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="text-gray-700 dark:text-gray-200 hover:text-blue-700 dark:hover:text-blue-400 transition-colors flex items-center"
+              >
+                <FontAwesomeIcon icon={item.icon} className="mr-2 w-4 h-4" />
+                {item.label}
+              </Link>
+            )
           ))}
 
           {/* Dark Mode Toggle */}
@@ -542,15 +593,29 @@ export default function HeaderLoggedIn() {
           <div className="flex flex-col px-4 py-4 space-y-3 text-sm">
             {/* Role-based Mobile Menu Items */}
             {currentMenus.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className="text-gray-700 dark:text-gray-200 hover:text-blue-700 dark:hover:text-blue-400 flex items-center transition-colors py-2"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                <FontAwesomeIcon icon={item.icon} className="mr-3 w-4 h-4" />
-                {item.label}
-              </Link>
+              item.onClick ? (
+                <button
+                  key={item.label}
+                  onClick={() => {
+                    item.onClick?.();
+                    setMobileMenuOpen(false);
+                  }}
+                  className="text-gray-700 dark:text-gray-200 hover:text-blue-700 dark:hover:text-blue-400 flex items-center transition-colors py-2"
+                >
+                  <FontAwesomeIcon icon={item.icon} className="mr-3 w-4 h-4" />
+                  {item.label}
+                </button>
+              ) : (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className="text-gray-700 dark:text-gray-200 hover:text-blue-700 dark:hover:text-blue-400 flex items-center transition-colors py-2"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  <FontAwesomeIcon icon={item.icon} className="mr-3 w-4 h-4" />
+                  {item.label}
+                </Link>
+              )
             ))}
 
             {/* Dark Mode Toggle Mobile */}
@@ -632,6 +697,30 @@ export default function HeaderLoggedIn() {
 
       {/* Page Content Padding */}
       <div className="pt-20"></div>
+
+      {/* ADD CHAT COMPONENTS HERE - Will show on every page */}
+      {/* Chat Button (floating) */}
+      {!isChatOpen && user && (
+        <ChatButton 
+          onClick={handleOpenChat} 
+          unreadCount={chatUnreadCount} 
+        />
+      )}
+
+      {/* Chat Window Component */}
+      {isChatOpen && user && (
+        <ChatComponent
+          currentUser={{
+            id: user.id,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            profile_picture: user.profileImage,
+            title: user.role
+          }}
+          isOpen={isChatOpen}
+          onClose={() => setIsChatOpen(false)}
+        />
+      )}
     </>
   );
 }

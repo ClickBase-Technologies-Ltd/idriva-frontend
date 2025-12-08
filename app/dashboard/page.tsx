@@ -175,6 +175,9 @@ export default function FeedPage() {
   const [modalData, setModalData] = useState<ModalData | null>(null);
   const [modalLoading, setModalLoading] = useState(false);
   
+  //  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+
   // Chat states
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [selectedChatUser, setSelectedChatUser] = useState<ChatUser | null>(null);
@@ -442,86 +445,51 @@ export default function FeedPage() {
   }, [feed]);
 
   // Add new post - simple optimistic update
-  const addNewPost = useCallback(async (newPost: Post) => {
-    if (!user) return;
+  // Replace the entire addNewPost function with this simplified version:
+const addNewPost = useCallback(async (newPost: any) => {
+  if (!user) return;
 
-    // Create optimistic post
-    const optimisticPost: FeedItem = {
-      id: `temp-${Date.now()}`,
-      postId: -Date.now(),
-      type: "post",
-      authorName: `${user.firstName} ${user.lastName}`,
-      authorAvatar: user.profileImage || '/avatar.png',
+  // Create optimistic post
+  const optimisticPost: FeedItem = {
+    id: `temp-${Date.now()}`,
+    postId: -Date.now(), // Temporary negative ID
+    type: "post" as const,
+    authorName: `${user.firstName} ${user.lastName}`,
+    authorAvatar: user.profileImage || '/avatar.png',
+    created_at: new Date().toISOString(),
+    content: newPost.body || newPost.content || '',
+    image_url: newPost.uploadUrl ? `${process.env.NEXT_PUBLIC_FILE_URL}${newPost.uploadUrl}` : null,
+    likes: 0,
+    comments: [],
+    shares: 0,
+    user: {
+      id: user.id,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      otherNames: user.otherNames,
+      profileSlug: null,
+      avatar: user.profileImage,
+      email: user.email,
+      phoneNumber: user.phoneNumber,
+      email_verified_at: new Date().toISOString(),
+      role: 0,
+      status: 'active',
       created_at: new Date().toISOString(),
-      content: newPost.body,
-      image_url: newPost.uploadUrl ? `${process.env.NEXT_PUBLIC_API_URL}${newPost.uploadUrl}` : null,
-      likes: 0,
-      comments: [],
-      shares: 0,
-      user: {
-        id: user.id,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        otherNames: user.otherNames,
-        profileSlug: null,
-        avatar: user.profileImage,
-        email: user.email,
-        phoneNumber: user.phoneNumber,
-        email_verified_at: new Date().toISOString(),
-        role: 0,
-        status: 'active',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        deleted_at: null
-      },
-      isLiked: false,
-    };
+      updated_at: new Date().toISOString(),
+      deleted_at: null
+    },
+    isLiked: false,
+  };
 
-    // Add to feed optimistically
-    setFeed(prev => [optimisticPost, ...prev]);
+  // Add to feed optimistically
+  setFeed(prev => [optimisticPost, ...prev]);
 
-    try {
-      const formData = new FormData();
-      formData.append('content', newPost.body);
-      if (newPost.uploadUrl) {
-        // You'll need to handle file upload properly
-      }
-
-      const response = await api.post('/posts', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
-
-      if (response.status === 201) {
-        const realPost = response.data.post || response.data;
-        
-        // Replace optimistic post with real one
-        setFeed(prev => prev.map(item => 
-          item.id === optimisticPost.id ? {
-            id: `post-${realPost.postId}`,
-            postId: realPost.postId,
-            type: "post",
-            authorName: `${realPost.user?.firstName || user.firstName} ${realPost.user?.lastName || user.lastName}`,
-            authorAvatar: realPost.user?.avatar || user.profileImage || '/avatar.png',
-            created_at: realPost.created_at,
-            content: realPost.body,
-            image_url: realPost.uploadUrl ? `${process.env.NEXT_PUBLIC_FILE_URL}${realPost.uploadUrl}` : null,
-            likes: realPost.likes?.length || 0,
-            comments: realPost.comments || [],
-            shares: realPost.shares?.length || 0,
-            user: realPost.user,
-            isLiked: false,
-          } : item
-        ));
-      }
-    } catch (error) {
-      console.error('Error creating post:', error);
-      // Remove optimistic post on error
-      setFeed(prev => prev.filter(item => item.id !== optimisticPost.id));
-      setError('Failed to create post');
-    }
-  }, [user]);
+  // Wait a moment then refresh the feed to get the actual post
+  // This gives the CreatePostBox time to complete its API call
+  setTimeout(() => {
+    fetchFeed();
+  }, 1000);
+}, [user, fetchFeed]);
 
   // Simple like handler
   const handleLike = useCallback(async (postId: number, currentlyLiked: boolean) => {
@@ -558,6 +526,7 @@ export default function FeedPage() {
   }, []);
 
   // Update handleComment to return the actual comment
+// Update handleComment to return the actual comment
 const handleComment = useCallback(async (postId: number, commentContent: string) => {
   if (!commentContent.trim() || !user) return;
 
@@ -572,7 +541,7 @@ const handleComment = useCallback(async (postId: number, commentContent: string)
       id: user.id,
       firstName: user.firstName,
       lastName: user.lastName,
-      avatar: user.profileImage || null,
+      profileImage: user.profileImage || null,
     }
   };
 
@@ -592,7 +561,20 @@ const handleComment = useCallback(async (postId: number, commentContent: string)
     });
 
     if (response.status === 201) {
-      const actualComment = response.data.comment || response.data;
+      const responseData = response.data;
+      const actualComment = {
+        postCommentId: responseData.postCommentId,
+        userId: responseData.userId,
+        postId: responseData.postId,
+        content: responseData.comment, // NOTE: Changed from responseData.content to responseData.comment
+        created_at: responseData.created_at,
+        user: {
+          id: user.id,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          profileImage: user.profileImage || null,
+        }
+      };
       
       // Replace optimistic comment
       setFeed(prev => prev.map(item => 
@@ -781,24 +763,26 @@ const handleComment = useCallback(async (postId: number, commentContent: string)
     <>
       <HeaderLoggedIn />
       {/* Chat Components */}
-      {!isChatOpen && (
+      {/* {!isChatOpen && (
         <ChatButton 
-          onClick={() => setIsChatOpen(true)} 
-          unreadCount={unreadMessages}
-        />
+        onClick={() => setIsChatOpen(!isChatOpen)} 
+        unreadCount={unreadCount} 
+      />
       )}
 
       {isChatOpen && (
         <ChatComponent
-          currentUser={user}
-          isOpen={isChatOpen}
-          onClose={() => {
-            setIsChatOpen(false);
-            setSelectedChatUser(null);
+          currentUser={{
+            id: 'current-user-id',
+            firstName: 'John',
+            lastName: 'Doe',
+            profile_picture: '/john.jpg',
+            title: 'Software Engineer'
           }}
-          initialReceiver={selectedChatUser}
+          isOpen={isChatOpen}
+          onClose={() => setIsChatOpen(false)}
         />
-      )}
+      )} */}
       <div className="bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-white pt-16">
         <div className="max-w-[1360px] mx-auto px-4 lg:px-6 flex gap-6 mt-[-70px]">
           {/* LEFT SIDEBAR */}
@@ -834,7 +818,7 @@ const handleComment = useCallback(async (postId: number, commentContent: string)
                   firstName: user.firstName,
                   lastName: user.lastName,
                   role: user.role,
-                  profile_picture: user.profileImage || undefined
+                  profileImage: user.profileImage || undefined
                 }}
                 onPostCreated={addNewPost} 
                 onError={setError}
@@ -876,7 +860,7 @@ const handleComment = useCallback(async (postId: number, commentContent: string)
                       firstName: user!.firstName,
                       lastName: user!.lastName,
                       role: user!.role,
-                      profile_picture: user!.profileImage || undefined
+                      profileImage: user!.profileImage || undefined
                     }}
                     onLike={handleLike}
                     onShare={handleShare}
