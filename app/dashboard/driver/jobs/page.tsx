@@ -324,9 +324,12 @@ function JobCard({
         <div className="flex justify-between items-start">
           <div className="flex items-start space-x-4 flex-1">
             <img
-              src={`${process.env.NEXT_PUBLIC_FILE_URL}/${job.companyLogo || '/company-avatar.png'}`}
+              src={`${process.env.NEXT_PUBLIC_FILE_URL}/${job?.company?.companyLogo || '/companyLogo.png'}`}
               className="w-12 h-12 rounded-full object-cover"
               alt={job.companyName}
+              onError={(e) => {
+                  e.currentTarget.src = '/companyLogo.png';
+                }}
             />
             <div className="flex-1">
               <div className="flex flex-wrap items-center gap-2 mb-2">

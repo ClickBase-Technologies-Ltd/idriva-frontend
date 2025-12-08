@@ -378,7 +378,7 @@ export default function Sidebar() {
 
       {/* Sidebar */}
       <aside
-        className={`fixed top-0 left-0 w-64 h-full bg-white dark:bg-gray-900 text-gray-800 dark:text-white shadow transform transition-transform duration-300 lg:static lg:translate-x-0 lg:block z-50 rounded-lg overflow-y-auto ${
+        className={`fixed top-0 left-0 w-64 h-full bg-white dark:bg-gray-900 text-gray-800 dark:text-white shadow transform transition-transform duration-300 lg:static lg:translate-x-0 lg:block z-50 rounded-lg  overflow-y-auto ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >

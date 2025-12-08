@@ -139,8 +139,8 @@ export default function CreatePostBox({ user, onPostCreated, onError }: CreatePo
         <div className="flex items-start space-x-3">
           <Image
             src={
-              user?.profile_picture
-                ? `${process.env.NEXT_PUBLIC_FILE_URL}/${user.profile_picture}`
+              user?.profileImage
+                ? `${process.env.NEXT_PUBLIC_FILE_URL}/${user.profileImage}`
                 : '/avatar.png'
             }
             alt="User"
@@ -177,8 +177,8 @@ export default function CreatePostBox({ user, onPostCreated, onError }: CreatePo
             <div className="flex items-center space-x-3 mb-4">
               <Image
                 src={
-                  user?.profile_picture
-                    ? `${process.env.NEXT_PUBLIC_FILE_URL}/${user.profile_picture}`
+                  user?.profileImage
+                    ? `${process.env.NEXT_PUBLIC_FILE_URL}/${user.profileImage}`
                     : '/avatar.png'
                 }
                 alt="User"
